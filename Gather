@@ -8,7 +8,6 @@
 # Load libraries
 library(dplyr)
 library(XML)
-library(dplyr)
 library(rvest)
 library(stringr)
 
@@ -21,14 +20,13 @@ setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets")
 
 # install relevant packages
 install.packages("Combine") 
-Combine(ABCA_FP, ACA_FP, ACE_US) # didnt' work
+Combine(ABCA_FP, ACA_FP, ACE_US) # didnt' work, too tedious
 
 install.packages("mget") #"not available"
 install.packages("rbind") #"not available"
 install.packages("cbind") #"not available"
 install.packages("bind_rows") #"not available"
 install.packages("gdata") #"not available"
-
 
 # create an aggregate list
 aggregate_list <- do.call("bind_rows", lapply(temp, function(x)
