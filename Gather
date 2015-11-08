@@ -18,6 +18,29 @@ setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets")
 # Aggregate content of tables and match IDs from .dat file
 ################################
 
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")
+list.files()
+filenames <- list.files(path = "/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")
+do.call("rbind", lapply(filenames, read.csv, header = TRUE))
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+################################
+# Outtakes
+################################
+
 # install relevant packages
 install.packages("Combine") 
 Combine(ABCA_FP, ACA_FP, ACE_US) # didnt' work, too tedious
