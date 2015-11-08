@@ -22,6 +22,14 @@ setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/E
 list.files()
 filenames <- list.files(path = "/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")
 
+#friend's example
+setwd("...")
+temp <- list.files(pattern="*listings.csv")
+listings_big <- do.call("bind_rows", lapply(temp, function(x)
+read.csv(x, colClasses = "character")))
+
+
+
 
 
 
@@ -39,16 +47,6 @@ filenames <- list.files(path = "/Users/laurencehendry/GoogleDrive/Master Thesis 
 ################################
 # Outtakes
 ################################
-
-#friend's code
-setwd("...")
-temp <- list.files(pattern="*listings.csv")
-listings_big <- do.call("bind_rows", lapply(temp, function(x)
-read.csv(x, colClasses = "character")))
-
-
-
-
 
 # install relevant packages
 install.packages("Combine") 
