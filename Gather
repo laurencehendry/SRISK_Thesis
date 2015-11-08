@@ -1,0 +1,42 @@
+############################
+# Code to reshape data of NYU Stern Business School V-Lab SRISK 
+# Written by Laurence Hendry l.hendry@mpp.hertie-school.org
+# Created 08.11.2015
+# Loads the data and saves it in the respective format
+############################
+
+# Load libraries
+library(dplyr)
+library(XML)
+library(dplyr)
+library(rvest)
+library(stringr)
+
+# Set working directory
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets")
+
+################################
+# Aggregate content of tables and match IDs from .dat file
+################################
+
+# install relevant packages
+install.packages("Combine") 
+Combine(ABCA_FP, ACA_FP, ACE_US) # didnt' work
+
+install.packages("mget") #"not available"
+install.packages("rbind") #"not available"
+install.packages("cbind") #"not available"
+install.packages("bind_rows") #"not available"
+install.packages("gdata") #"not available"
+
+
+# create an aggregate list
+aggregate_list <- do.call("bind_rows", lapply(temp, function(x)
+  read.csv(x, colClasses = "character")))
+  
+
+
+
+
+
+
