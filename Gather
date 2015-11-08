@@ -18,6 +18,10 @@ setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets")
 # Aggregate content of tables and match IDs from .dat file
 ################################
 
+
+
+
+
 setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")
 list.files()
 filenames <- list.files(path = "/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")
@@ -41,7 +45,41 @@ read.csv(x, colClasses = "character")))
 
 
 
+################################
+# Prof. Gandrud's suggestion
+################################
+library(rio)
+library(dplyr)
+library(DataCombine)
 
+# Set directory to where the files are stored
+setwd('~/Desktop/European_Firms/')
+
+# Find a list of all files in the directory
+all_files <- list.files()
+
+# Create a NULL object to combine the individual files into
+combined <- NULL
+
+for (i in all_files) {
+    # Load and combine only if the file is a csv
+    if (tools::file_ext(i) == 'csv') {
+        # Read file
+        temp <- import(i)
+
+        # Create file ID from the file name and move to the front
+        file_id <- gsub(pattern = '.csv', replacement = '', i)
+        message(file_id)
+        temp$file_id <- file_id
+        temp <- MoveFront(temp, 'file_id')
+
+        # Bind to the main data frame
+        combined <- bind_rows(combined, temp)
+
+    } else {
+        message('-- Not CSV --')
+    }
+}
 
 
 ################################
