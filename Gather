@@ -2,105 +2,82 @@
 # Code to reshape data of NYU Stern Business School V-Lab SRISK 
 # Written by Laurence Hendry l.hendry@mpp.hertie-school.org
 # Created 08.11.2015
-# Loads the data and saves it in the respective format
+# Loads and merges the data and saves it in a format ready for analysis
+############################
+library(base)
+library(rio) # swiss army knife for imports
+library(plyr) # count occurences
+library(dplyr) # data wrangling
+library(tidyr) # data wrangling
+library(ggplot2) # nice plots
+library(stargazer) # nicer regression output which looks like a real publication
+library(car) # scatterplots 
+library(httr) # scraping from http sites
+library(XML) # Tool for generating XML file
+library(WDI) # Scraping Data from the World Bank 
+library(countrycode) # provides world bank country codes 
+library(DataCombine) # merge package
+library(lubridate) # provides functions to extract date-time components
+
+############################
+## THE GRAND MERGE
 ############################
 
-# Load libraries
-library(dplyr)
-library(XML)
-library(rvest)
-library(stringr)
+try(setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")) 
 
-# Set working directory
-setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets")
-
-################################
-# Aggregate content of tables and match IDs from .dat file
-################################
-
-
-
-
-
-setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")
-list.files()
-filenames <- list.files(path = "/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/V-Lab Datasets/European_Firms")
-
-#friend's example
-setwd("...")
-temp <- list.files(pattern="*listings.csv")
-listings_big <- do.call("bind_rows", lapply(temp, function(x)
-read.csv(x, colClasses = "character")))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-################################
-# Prof. Gandrud's suggestion
-################################
-library(rio)
-library(dplyr)
-library(DataCombine)
-
-# Set directory to where the files are stored
-setwd('~/Desktop/European_Firms/')
-
-# Find a list of all files in the directory
 all_files <- list.files()
 
 # Create a NULL object to combine the individual files into
 combined <- NULL
 
 for (i in all_files) {
-    # Load and combine only if the file is a csv
-    if (tools::file_ext(i) == 'csv') {
-        # Read file
-        temp <- import(i)
-
-        # Create file ID from the file name and move to the front
-        file_id <- gsub(pattern = '.csv', replacement = '', i)
-        message(file_id)
-        temp$file_id <- file_id
-        temp <- MoveFront(temp, 'file_id')
-
-        # Bind to the main data frame
-        combined <- bind_rows(combined, temp)
-
-    } else {
-        message('-- Not CSV --')
-    }
+  # Load and combine only if the file is a csv
+  if (tools::file_ext(i) == 'csv') {
+    # Read file
+    temp <- import(i)
+    
+    # Create file ID from the file name and move to the front
+    file_id <- gsub(pattern = '.csv', replacement = '', i)
+    message(file_id)
+    temp$file_id <- file_id
+    temp <- MoveFront(temp, 'file_id')
+    
+    # Bind to the main data frame
+    combined <- bind_rows(combined, temp)
+    
+  } else {
+    message('-- Not CSV --')
+  }
 }
 
+############################
+## RENAME THE VARIABLES
+############################
 
-################################
-# Outtakes
-################################
+combined$V8 = NULL
 
-# install relevant packages
-install.packages("Combine") 
-Combine(ABCA_FP, ACA_FP, ACE_US) # didnt' work, too tedious
+names(combined)[1] <- 'Firm/Bank Code'
+names(combined)[2] <- 'Date'
+names(combined)[3] <- 'Marginal Expected Shortfall (MES)'
+names(combined)[4] <- 'Daily Variance for the firm that day'
+names(combined)[5] <- 'Beta of the firm with respect to MSCI World Index (Rob Engle Dynamic COnditional Beta Model)'
+names(combined)[6] <- 'Correlation of the firm to MSCI World Index (uses asymmetric dynamic conditional correlation model)'
+names(combined)[7] <- 'Firm Leverage Ratio'
+names(combined)[8] <- 'Firm Capital Shortfall (SRISK) (5.5% prudential capital ratio for Europe)'
+names(combined)[9] <- 'Firm Market Capitalisation in USD'
 
-install.packages("mget") #"not available"
-install.packages("rbind") #"not available"
-install.packages("cbind") #"not available"
-install.packages("bind_rows") #"not available"
-install.packages("gdata") #"not available"
+############################
+## FORMAT THE DATE
+############################
 
-# create an aggregate list
-aggregate_list <- do.call("bind_rows", lapply(temp, function(x)
-  read.csv(x, colClasses = "character")))
-  
+?strptime #discover date-time conversion function possibilities
+format(sys.Date(), "%a %b %d") # failed thought
 
+# the dates were entered/formatted in excel. We can therefore seek matches with excel once this step is complete to later determine whether
+# 1900-01-01 or 1904-01-01 were used as baselines for days (since these are the two start date conventions used by excel)
+
+as.Date(36690, origin = "1900-01-01") # example for one value
+dates <- as.Date("Date", origin = "1900-01-01") # attempt to convert entire date column
 
 
 
