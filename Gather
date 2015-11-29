@@ -68,21 +68,42 @@ names(combined)[9] <- 'Firm Market Capitalisation in USD'
 
 ?strptime #discover date-time conversion function possibilities
 #format(sys.Date(), "%a %b %d") #failed thought
-
 #the dates were entered/formatted in excel. We can therefore seek matches once this step is complete to later determine whether
 #1900-01-01 or 1904-01-01 were used (since these are the two start date conventions used by excel)
+#as.Date(36690, origin = "1900-01-01") #example for one value
 
-as.Date(36690, origin = "1900-01-01") #example for one value
+
 dates <- as.Date("Date", origin = "1900-01-01") #attempt to convert entire date column
-
-
 combined$DateProper <- as.Date(combined$Date, origin = '1900-01-01')
 
 
 ############################
-## ADDITIONAL VARIABLES
+## ADDITIONAL VARIABLES: TRADING NAME, COUNTRY, STATUS
 ############################
+
+#convert the accompanying .dat file into Index.csv and import into R
 
 setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms/Working")
 
 allvars <- merge(Index, combined, by="Code")
+
+
+############################
+## SORT DATASET CHRONOLOGICALLY
+############################
+#order(allvars$Date)
+
+allvars2 <- arrange(allvars, Days)
+
+
+############################
+## SHARP AND FUZZY REGRESSION DISCONTINUITY ANALYSIS
+############################
+
+??rdd
+?DCdensity
+
+#https://cran.r-project.org/web/packages/rdd/rdd.pdf
+
+names(allvars2)[8] <- SRISK
+IKbandwith(allvars2$Days, allvars2$SRISK, cutpoint = NULL, verbose = FALSE, kernel = "triangular")
