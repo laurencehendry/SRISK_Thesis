@@ -12,18 +12,15 @@ library(WDI) # Scraping Data from the World Bank
 library(countrycode) # provides world bank country codes 
 library(DataCombine) #merge package
 library(lubridate) #provides functions to extract date-time components
-library(date) 
-library(timeDate) #computational finance chronological objects
-library(XLConnect) #integrates with excel output
-library(chron)
+library(rdd) #sharp and fuzzy regression discontinuity design tool
 
 
 ############################
 ## THE GRAND MERGE
 ############################
 
-try(setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms")) 
-
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms")
+    
 all_files <- list.files()
 
 # Create a NULL object to combine the individual files into
@@ -50,48 +47,42 @@ for (i in all_files) {
 }
 
 ############################
-## RETRIEVE INFO FROM INDEX FILE
+## RENAME THE VARIABLES
 ############################
 
-try(setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms")) 
-
-names(combined)[1] <- 'Code'
 combined$V8 = NULL
 
-#Import Index file
-combined2 <- merge(combined[, c("Code", "V1", "V2", "V3", "V4", "V5", "V6", "V7", "V9")], Index[, c("Code", "Trading.Name", "Country", "Status")])
-
-#combined2 <- merge(Index[, c("Code", "Date in days since 1900", "Marginal Expected Shortfall (MES)", "Daily Variance for the firm that day", "Beta of the firm with respect to MSCI World Index (Rob Engle Dynamic Conditional Beta Model)", "Correlation of the firm to MSCI World Index (uses asymmetric dynamic conditional correlation model)", "Firm Leverage Ratio", "Firm Capital Shortfall (SRISK) (5.5% prudential capital ratio for Europe)", "Firm Market Capitalisation in USD")], Index[, c("Code", "Trading.name", "Country", "Status")])
-
-
-############################
-## RENAME THE VARIABLES for combined2
-############################
-
-#remember that the [n] refers to column number and we don't identify column by name/symbol
-
-names(combined2)[2] <- 'DateDays'
-names(combined2)[3] <- 'Marginal Expected Shortfall (MES)'
-names(combined2)[4] <- 'Daily Variance for the firm that day'
-names(combined2)[5] <- 'Beta of the firm with respect to MSCI World Index (Rob Engle Dynamic Conditional Beta Model)'
-names(combined2)[6] <- 'Correlation of the firm to MSCI World Index (uses asymmetric dynamic conditional correlation model)'
-names(combined2)[7] <- 'Firm Leverage Ratio'
-names(combined2)[8] <- 'Firm Capital Shortfall (SRISK) (5.5% prudential capital ratio for Europe)'
-names(combined2)[9] <- 'Firm Market Capitalisation in USD'
+names(combined)[1] <- 'Code'
+names(combined)[2] <- 'Days'
+names(combined)[3] <- 'Marginal Expected Shortfall (MES)'
+names(combined)[4] <- 'Daily Variance for the firm that day'
+names(combined)[5] <- 'Beta of the firm with respect to MSCI World Index (Rob Engle Dynamic COnditional Beta Model)'
+names(combined)[6] <- 'Correlation of the firm to MSCI World Index (uses asymmetric dynamic conditional correlation model)'
+names(combined)[7] <- 'Firm Leverage Ratio'
+names(combined)[8] <- 'Firm Capital Shortfall (SRISK) (5.5% prudential capital ratio for Europe)'
+names(combined)[9] <- 'Firm Market Capitalisation in USD'
 
 ############################
 ## FORMAT THE DATE
 ############################
-# http://datapub.cdlib.org/2014/04/10/abandon-all-hope-ye-who-enter-dates-in-excel/ 
 
-combined2$DateProper <- as.Date(combined2$DateDays, origin = '1900-01-01')
+?strptime #discover date-time conversion function possibilities
+#format(sys.Date(), "%a %b %d") #failed thought
+
+#the dates were entered/formatted in excel. We can therefore seek matches once this step is complete to later determine whether
+#1900-01-01 or 1904-01-01 were used (since these are the two start date conventions used by excel)
+
+as.Date(36690, origin = "1900-01-01") #example for one value
+dates <- as.Date("Date", origin = "1900-01-01") #attempt to convert entire date column
+
+
+combined$DateProper <- as.Date(combined$Date, origin = '1900-01-01')
 
 
 ############################
-## EXPORT TO .CSV
+## ADDITIONAL VARIABLES
 ############################
 
-write.csv(combined2, "/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms/Working/combined3.csv")
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms/Working")
 
-
-
+allvars <- merge(Index, combined, by="Code")
