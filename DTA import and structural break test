@@ -17,12 +17,12 @@ library(readstata13)
 library(DataCombine)
 library(lubridate)
 library(strucchange)
+library(plm)
 
 setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/Special Folder/R Laurence Folder - 20.1.16")
 
-
 ############################
-## DTA Import
+## .DTA from STATA as .CSV Import
 ############################
 #import the .csv from STATA 13 (HolyGrail)
 #rename variables correctly 
@@ -43,6 +43,27 @@ RHolyGrail$edate1 <- NULL
 #get R to read dates correctly
 RHolyGrail$Date <- as.Date(RHolyGrail$days, origin = '1900-01-01')
 
+#get a summary of the variables
+summary(RHolyGrail)
+
+############################
+## Create sub-sets for the data
+############################
+
+#haven't gone anywhere with this step yet
+#RHolyGrail_subset1 <- subset()
+
+############################
+## Declaring the unit, for time series study
+############################
+
+#attempting to find an equivalent command to xtset 
+#stumbled upon: http://www.rdocumentation.org/packages/qogdata/functions/xtset
+#but 'xtset' does not appear supported in the plm package
+xtset(dataset = RHolyGrail,
+  data = c("code_ordinal", "Date"),
+  spec = c("tradingname_ordinal", "days"),
+  name = "srisk for companies, time series data")
 
 ############################
 ## Structural Break test
@@ -50,7 +71,18 @@ RHolyGrail$Date <- as.Date(RHolyGrail$days, origin = '1900-01-01')
 ##Structural Break test, see p.56-7 https://cran.r-project.org/web/packages/strucchange/strucchange.pdf 
 sctest(RHolyGrail$srisk ~ RHolyGrail$Date + RHolyGrail$EU_CRR, type = "Chow", point =7)
 
+############################
+## Plotting
+############################
 
+plot(RHolyGrail$srisk)
 
+srisk_ts <- ts(RHolyGrail$srisk)
+plot.ts(srisk_ts)
+
+############################
+## Write to .CSV file
+############################
+write.table(RHolyGrail, file = "RHolyGrail_worked.csv", row.names=TRUE, sep = ",")
 
 
