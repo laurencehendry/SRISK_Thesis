@@ -47,13 +47,6 @@ RHolyGrail$Date <- as.Date(RHolyGrail$days, origin = '1900-01-01')
 summary(RHolyGrail)
 
 ############################
-## Create sub-sets for the data
-############################
-
-#haven't gone anywhere with this step yet
-#RHolyGrail_subset1 <- subset()
-
-############################
 ## Declaring the unit, for time series study
 ############################
 
@@ -86,3 +79,61 @@ plot.ts(srisk_ts)
 write.table(RHolyGrail, file = "RHolyGrail_worked.csv", row.names=TRUE, sep = ",")
 
 
+############################
+## Generate nice summary statistics
+############################
+library(sjPlot) # http://strengejacke.de/sjPlot/ 
+#taking Aberdeen Asset Management as our example
+
+sjp.setTheme(theme = "scatter",
+             geom.label.size = 3.5,
+             geom.label.color = "black",
+             axis.textsize = .8,
+             axis.title.size = .9)
+
+sjp.frq(RHolyGrail$country_ordinal, 
+        sort.frq = "asc",
+        axisTitle.x = "Country",
+        axisTitle.y = "Number of Observations",
+        coord.flip = TRUE,
+        labelPos = "outside")
+
+#Sub-set our data
+RHolyGrail_subset1 <- subset(RHolyGrail, code_ordinal=="ADN_LN")
+sjp.frq(RHolyGrail_subset1$firmleverage,
+        RHolyGrail_subset1$days,
+        type = "dens",
+        showNormalCurve = TRUE,
+        normalCurveAlpha = .3,
+        axisTitle.x = "Time",
+        axisTitle.y = "Leverage",
+        labelPos = "outside")
+
+plot(RHolyGrail_subset1$firmleverage,
+     RHolyGrail_subset1$days)
+
+############################
+## Generate nice chronological graphs
+############################
+library(timeSeries)
+library(timeDate)
+
+par(mar = c(bottom=2, 5.1, top=3, 2.1))
+plot(RHolyGrail_subset1$Date, RHolyGrail_subset1$srisk)
+
+sjp.setTheme(theme = "scatter",
+             geom.label.size = 3.5,
+             axis.title.size = .85,
+             legend.size = .8,
+             legend.title.size = .8,
+             legend.pos = "right")
+
+sjp.scatter(RHolyGrail_subset1$Date, 
+            RHolyGrail_subset1$firmleverage, 
+            showRug = TRUE, 
+            title = "Aberdeen Asset Management Leverage Ratio over time", 
+            axisTitle.x = "Time", 
+            axisTitle.y = "Leverage Ratio", 
+            showGroupFitLine = TRUE, 
+            fitmethod = "loess", 
+            showTotalFitLine = TRUE)
