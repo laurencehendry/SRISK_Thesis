@@ -9,6 +9,7 @@
 ## Load packages
 ############################
 
+# not used:
 library(base)
 library(rio) # swiss army knife for imports
 library(plyr) # count occurences
@@ -23,6 +24,8 @@ library(WDI) # Scraping Data from the World Bank
 library(countrycode) # provides world bank country codes 
 library(gplots)
 library(knitr) 
+
+# used:
 library(readstata13) # helps import from Stata 13
 library(DataCombine) # helps with dates
 library(lubridate) # helps with dates
@@ -30,6 +33,9 @@ library(strucchange) # structural change test package
 library(plm) # package for handling panel data
 library(sjPlot) # makes nice graphs, see: http://strengejacke.de/sjPlot/ 
 library(foreign) # helps import from other statistical suites
+library(fUnitRoots) # unit root tests (including Zivot-Andrews)
+library(timeSeries)
+library(timeDate)
 
 ############################
 ## Set the correct working directory
@@ -97,47 +103,80 @@ RHolyGrail_sb <- pdata.frame(RHolyGrail_subset1)
 #  name = "srisk for companies, time series data")
 
 ############################
-## Structural Break test
+## Structural Break tests
 ############################
-
-# test whether volatility for Aberdeen Asset Management remained constant over the years
-fs.RHolyGrail_sb=Fstats(RHolyGrail_sb$srisk ~ 1)
-plot(fs.RHolyGrail_sb)
-print(sctest(fs.RHolyGrail_sb))
-plot(RHolyGrail_sb$srisk)
-lines(breakpoints(fs.RHolyGrail_sb))
-
-# test the null hypothesis that srisk volatility remains constant
-# over the years
-# compute OLS-based CUSUM process and plot
-# with standard and alternative boundaries
-ocus.RHolyGrail_sb=efp(RHolyGrail_sb$srisk ~ 1, type = "OLS-CUSUM")
-plot(ocus.RHolyGrail_sb)
-plot(ocus.RHolyGrail_sb, alpha = 0.01, alt.boundary = TRUE)
-# calculate corresponding test statistic
-print(sctest(ocus.RHolyGrail_sb))
-dev.off()
 
 # For structural break tests, see p.56-7 https://cran.r-project.org/web/packages/strucchange/strucchange.pdf 
 # and https://cran.r-project.org/web/packages/strucchange/vignettes/strucchange-intro.pdf 
 # and p.57 'testing for breaks' http://www.wise.xmu.edu.cn/2007summerworkshop/download/Advanced%20Topics%20in%20Time%20Series%20Econometrics%20Using%20R1_ZongwuCAI.pdf
 
-# with Chow test:
-sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, type = "Chow", point =7)
+########## Chow test:
+# test whether volatility for Aberdeen Asset Management remained constant over the years
 
-# with OLS-CUSUM test:
-sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, type = "OLS-CUSUM", point =7)
+sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, 
+       type = "Chow", 
+       point =7)
 
-plot(RHolyGrail_sb)
+########## supF test:
 
-subset_2gr <- boundary(RHolyGrail_subset1, alpha=0.05)
-warnings()
+fs.RHolyGrail_sb=Fstats(RHolyGrail_sb$srisk ~ 1)
+print(sctest(fs.RHolyGrail_sb))
+
+# set graph parameters
+par(mfrow=c(2,1),
+    mex = 0.8,
+    ps = 9,
+    pty = "m",
+    bg = "white")
+
+# Plot F-statistics with breakpoint line 
+plot(fs.RHolyGrail_sb, main = "supF test")
+lines(breakpoints(fs.RHolyGrail_sb))
+
+# Plot RSS & BIC models
+bp.RHolyGrail_sb <- breakpoints(RHolyGrail_sb$srisk ~ 1)
+plot(bp.RHolyGrail_sb)
+
+########## OLS-CUSUM test:
+# CUSUM Plot tests the null hypothesis that srisk volatility remains constant over the years
+# Here we compute OLS-based CUSUM process and plot with standard and alternative boundaries
+# nb. efp = empirical fluctuation processes
+
+sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, 
+       type = "OLS-CUSUM", 
+       point =7)
+
+
+print(sctest(ocus.RHolyGrail_sb))
+dev.off()
+
+ocus.RHolyGrail_sb=efp(RHolyGrail_sb$srisk ~ 1, 
+                       type = "OLS-CUSUM")
+
+# set graph parameters
+par(mfrow=c(2,1),
+    mex = 0.8,
+    ps = 9,
+    pty = "m",
+    bg = "white")
+
+plot(ocus.RHolyGrail_sb)
+plot(ocus.RHolyGrail_sb, alpha = 0.01, alt.boundary = TRUE)
+
+########## Zivot & Andrews test:
+# http://artax.karlin.mff.cuni.cz/r-help/library/urca/html/ur.za.html
+# see p.9 https://cran.r-project.org/web/packages/fUnitRoots/fUnitRoots.pdf
+
+# Doesn't work: 
+za.RHolyGrail_za <- ur.za(RHolyGrail_sb, model="both", lag=2)
+
+
 
 ############################
 ## Write to .CSV file
 ############################
-write.table(RHolyGrail, file = "RHolyGrail_worked.csv", row.names=TRUE, sep = ",")
 
+write.table(RHolyGrail, file = "RHolyGrail_worked.csv", row.names=TRUE, sep = ",")
 
 ############################
 ## Generate nice summary statistics
@@ -172,14 +211,24 @@ plot(RHolyGrail_subset1$firmleverage,
 ############################
 ## Generate nice chronological graphs
 ############################
-library(timeSeries)
-library(timeDate)
 
 par(mar = c(bottom=2, 5.1, top=3, 2.1))
-plot(RHolyGrail_subset1$Date, RHolyGrail_subset1$srisk)
+
+
+
+par(mfrow=c(2,1),
+    mex = 0.8,
+    ps = 9,
+    pty = "m",
+    bg = "white")
+plot(RHolyGrail_subset1$Date, 
+     RHolyGrail_subset1$srisk, 
+     main = "SRISK over time for Aberdeen Asset Management")
+
+plot(ocus.RHolyGrail_sb)
 
 sjp.setTheme(theme  = "scatter",
-             geom.label.size = 3.5,
+             geom.label.size = 10,
              axis.title.size = .85,
              legend.size = .8,
              legend.title.size = .8,
