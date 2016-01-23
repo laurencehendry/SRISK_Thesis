@@ -1,3 +1,14 @@
+############################
+## Laurence Hendry
+## R version used: RStudio 0.99.489 
+## Hertie School MPP Thesis 
+## Thanks to NYU Stern V-Lab for Dataset
+############################
+
+############################
+## Load packages
+############################
+
 library(base)
 library(rio) # swiss army knife for imports
 library(plyr) # count occurences
@@ -11,20 +22,26 @@ library(XML) # Tool for generating XML file
 library(WDI) # Scraping Data from the World Bank
 library(countrycode) # provides world bank country codes 
 library(gplots)
-library(plm)
 library(knitr)
 library(readstata13)
 library(DataCombine)
 library(lubridate)
 library(strucchange)
 library(plm)
+library(sjPlot) # http://strengejacke.de/sjPlot/ 
+
+############################
+## Set the correct working directory
+############################
 
 setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/Special Folder/R Laurence Folder - 20.1.16")
 
 ############################
 ## .DTA from STATA as .CSV Import
 ############################
+
 #import the .csv from STATA 13 (HolyGrail)
+
 #rename variables correctly 
 names(RHolyGrail)[1] <-'days'
 names(RHolyGrail)[2] <-'MES'
@@ -40,38 +57,57 @@ RHolyGrail[9]<- NULL
 RHolyGrail[10] <- NULL
 RHolyGrail$edate1 <- NULL
 
-#get R to read dates correctly
+############################
+## Get R to read dates correctly
+############################
+
 RHolyGrail$Date <- as.Date(RHolyGrail$days, origin = '1900-01-01')
 
-#get a summary of the variables
+#get a summary of the variables to check
 summary(RHolyGrail)
 
 ############################
-## Declaring the unit, for time series study
+## Sub-set our data
 ############################
+#unit is limited to AMC Aberdeen Asset Management 
+RHolyGrail_subset1 <- subset(RHolyGrail, 
+                             code_ordinal=="ADN_LN", 
+                             start = c(2011-01-20))
+?c
+#time is limited to 
+
+
+
+############################
+## Panel regression with the 'plm' package
+############################
+
+RHolyGrail_sb <- pdata.frame(RHolyGrail_subset1)
 
 #attempting to find an equivalent command to xtset 
 #stumbled upon: http://www.rdocumentation.org/packages/qogdata/functions/xtset
 #but 'xtset' does not appear supported in the plm package
-xtset(dataset = RHolyGrail,
-  data = c("code_ordinal", "Date"),
-  spec = c("tradingname_ordinal", "days"),
-  name = "srisk for companies, time series data")
+#xtset(dataset = RHolyGrail,
+#  data = c("code_ordinal", "Date"),
+#  spec = c("tradingname_ordinal", "days"),
+#  name = "srisk for companies, time series data")
 
 ############################
 ## Structural Break test
 ############################
-##Structural Break test, see p.56-7 https://cran.r-project.org/web/packages/strucchange/strucchange.pdf 
-sctest(RHolyGrail$srisk ~ RHolyGrail$Date + RHolyGrail$EU_CRR, type = "Chow", point =7)
+# For structural break tests, see p.56-7 https://cran.r-project.org/web/packages/strucchange/strucchange.pdf 
+# and https://cran.r-project.org/web/packages/strucchange/vignettes/strucchange-intro.pdf 
 
-############################
-## Plotting
-############################
+# with Chow test:
+sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, type = "Chow", point =7)
 
-plot(RHolyGrail$srisk)
+# with OLS-CUSUM test:
+sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, type = "OLS-CUSUM", point =7)
 
-srisk_ts <- ts(RHolyGrail$srisk)
-plot.ts(srisk_ts)
+plot(RHolyGrail_sb)
+
+subset_2gr <- boundary(RHolyGrail_subset1, alpha=0.05)
+warnings()
 
 ############################
 ## Write to .CSV file
@@ -82,7 +118,6 @@ write.table(RHolyGrail, file = "RHolyGrail_worked.csv", row.names=TRUE, sep = ",
 ############################
 ## Generate nice summary statistics
 ############################
-library(sjPlot) # http://strengejacke.de/sjPlot/ 
 #taking Aberdeen Asset Management as our example
 
 sjp.setTheme(theme = "scatter",
@@ -98,8 +133,6 @@ sjp.frq(RHolyGrail$country_ordinal,
         coord.flip = TRUE,
         labelPos = "outside")
 
-#Sub-set our data
-RHolyGrail_subset1 <- subset(RHolyGrail, code_ordinal=="ADN_LN")
 sjp.frq(RHolyGrail_subset1$firmleverage,
         RHolyGrail_subset1$days,
         type = "dens",
@@ -121,7 +154,7 @@ library(timeDate)
 par(mar = c(bottom=2, 5.1, top=3, 2.1))
 plot(RHolyGrail_subset1$Date, RHolyGrail_subset1$srisk)
 
-sjp.setTheme(theme = "scatter",
+sjp.setTheme(theme  = "scatter",
              geom.label.size = 3.5,
              axis.title.size = .85,
              legend.size = .8,
@@ -137,3 +170,9 @@ sjp.scatter(RHolyGrail_subset1$Date,
             showGroupFitLine = TRUE, 
             fitmethod = "loess", 
             showTotalFitLine = TRUE)
+
+#more accurate time series plot attempt
+plot(RHolyGrail$srisk)
+srisk_ts <- ts(RHolyGrail$srisk)
+plot.ts(srisk_ts)
+
