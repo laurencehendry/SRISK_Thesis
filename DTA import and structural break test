@@ -99,8 +99,28 @@ RHolyGrail_sb <- pdata.frame(RHolyGrail_subset1)
 ############################
 ## Structural Break test
 ############################
+
+# test whether volatility for Aberdeen Asset Management remained constant over the years
+fs.RHolyGrail_sb=Fstats(RHolyGrail_sb$srisk ~ 1)
+plot(fs.RHolyGrail_sb)
+print(sctest(fs.RHolyGrail_sb))
+plot(RHolyGrail_sb$srisk)
+lines(breakpoints(fs.RHolyGrail_sb))
+
+# test the null hypothesis that srisk volatility remains constant
+# over the years
+# compute OLS-based CUSUM process and plot
+# with standard and alternative boundaries
+ocus.RHolyGrail_sb=efp(RHolyGrail_sb$srisk ~ 1, type = "OLS-CUSUM")
+plot(ocus.RHolyGrail_sb)
+plot(ocus.RHolyGrail_sb, alpha = 0.01, alt.boundary = TRUE)
+# calculate corresponding test statistic
+print(sctest(ocus.RHolyGrail_sb))
+dev.off()
+
 # For structural break tests, see p.56-7 https://cran.r-project.org/web/packages/strucchange/strucchange.pdf 
 # and https://cran.r-project.org/web/packages/strucchange/vignettes/strucchange-intro.pdf 
+# and p.57 'testing for breaks' http://www.wise.xmu.edu.cn/2007summerworkshop/download/Advanced%20Topics%20in%20Time%20Series%20Econometrics%20Using%20R1_ZongwuCAI.pdf
 
 # with Chow test:
 sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, type = "Chow", point =7)
