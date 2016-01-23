@@ -22,13 +22,14 @@ library(XML) # Tool for generating XML file
 library(WDI) # Scraping Data from the World Bank
 library(countrycode) # provides world bank country codes 
 library(gplots)
-library(knitr)
-library(readstata13)
-library(DataCombine)
-library(lubridate)
-library(strucchange)
-library(plm)
-library(sjPlot) # http://strengejacke.de/sjPlot/ 
+library(knitr) 
+library(readstata13) # helps import from Stata 13
+library(DataCombine) # helps with dates
+library(lubridate) # helps with dates
+library(strucchange) # structural change test package 
+library(plm) # package for handling panel data
+library(sjPlot) # makes nice graphs, see: http://strengejacke.de/sjPlot/ 
+library(foreign) # helps import from other statistical suites
 
 ############################
 ## Set the correct working directory
@@ -40,7 +41,12 @@ setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sou
 ## .DTA from STATA as .CSV Import
 ############################
 
-#import the .csv from STATA 13 (HolyGrail)
+#import the .csv from STATA 13 (RHolyGrail.csv)
+
+#remove incorrectly formatted data columns
+RHolyGrail[9]<- NULL
+RHolyGrail[10] <- NULL
+RHolyGrail$edate1 <- NULL
 
 #rename variables correctly 
 names(RHolyGrail)[1] <-'days'
@@ -51,11 +57,6 @@ names(RHolyGrail)[5] <-'mscicorrelation'
 names(RHolyGrail)[6] <-'firmleverage'
 names(RHolyGrail)[7] <-'srisk'
 names(RHolyGrail)[8] <-'marketcap'
-
-#remove incorrectly formatted data columns
-RHolyGrail[9]<- NULL
-RHolyGrail[10] <- NULL
-RHolyGrail$edate1 <- NULL
 
 ############################
 ## Get R to read dates correctly
@@ -71,12 +72,15 @@ summary(RHolyGrail)
 ############################
 #unit is limited to AMC Aberdeen Asset Management 
 RHolyGrail_subset1 <- subset(RHolyGrail, 
-                             code_ordinal=="ADN_LN", 
-                             start = c(2011-01-20))
-?c
-#time is limited to 
+                             code_ordinal=="ADN_LN",
+                             days >= 36679 | days < 41886)
 
+#timeframe is limited to after 2002-08-10 
+#DOESN'T WORK
+RHolyGrail_subset2 <- subset(RHolyGrail_subset1, RHolyGrail_subset1$Date >= 2002-08-10,
+                             select=c(days:Date))
 
+View(RHolyGrail_subset2)
 
 ############################
 ## Panel regression with the 'plm' package
@@ -175,4 +179,9 @@ sjp.scatter(RHolyGrail_subset1$Date,
 plot(RHolyGrail$srisk)
 srisk_ts <- ts(RHolyGrail$srisk)
 plot.ts(srisk_ts)
+
+#exploring panel data
+
+coplot (y ~ year|tradingname.ordinal, type="b", data=RHolyGrail)
+
 
