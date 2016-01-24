@@ -138,6 +138,7 @@ bp.RHolyGrail_sb <- breakpoints(RHolyGrail_sb$srisk ~ 1)
 plot(bp.RHolyGrail_sb)
 
 ########## OLS-CUSUM test:
+
 # CUSUM Plot tests the null hypothesis that srisk volatility remains constant over the years
 # Here we compute OLS-based CUSUM process and plot with standard and alternative boundaries
 # nb. efp = empirical fluctuation processes
@@ -164,6 +165,7 @@ plot(ocus.RHolyGrail_sb)
 plot(ocus.RHolyGrail_sb, alpha = 0.01, alt.boundary = TRUE)
 
 ########## Zivot & Andrews test:
+
 # http://artax.karlin.mff.cuni.cz/r-help/library/urca/html/ur.za.html
 # see p.9 https://cran.r-project.org/web/packages/fUnitRoots/fUnitRoots.pdf
 
@@ -212,18 +214,54 @@ plot(RHolyGrail_subset1$firmleverage,
 ## Generate nice chronological graphs
 ############################
 
-par(mar = c(bottom=2, 5.1, top=3, 2.1))
+########## For generic y over time (x)
 
+# http://www.r-bloggers.com/how-to-plot-a-graph-in-r/
+par(mfrow=c(1,1), #multiple graphs 
+    mex = 0.8, #margin size
+    ps = 9, #font size
+    pty = "s", #or m
+    bg = "white",
+    tcl= -0.8)
+axis(1, 
+     at=seq(1, 
+               445, 
+               by=12), 
+     labels=F, 
+     lwd=1, 
+     lwd.ticks=1)
+abline(v=(12*(seq(2,32,by=5)))+1, col="lightgray",
+       lty="dotted")
+abline(h=(seq(0,150,25)), col="lightgray",
+       lty="dotted")
 
-
-par(mfrow=c(2,1),
-    mex = 0.8,
-    ps = 9,
-    pty = "m",
-    bg = "white")
 plot(RHolyGrail_subset1$Date, 
      RHolyGrail_subset1$srisk, 
-     main = "SRISK over time for Aberdeen Asset Management")
+     ann=F,
+     pch = ".",
+     typ='l')
+par(tcl= -0.2)
+axis(1, at=seq(1, 445, by=12), labels=F, lwd=1, lwd.ticks=1)
+par(tcl= -0.5)
+axis(1, at=seq(1 + 12*2, 450, by=60), labels=seq(1975,2010,5), lwd=0, lwd.ticks=2)
+par(tcl= -0.5)
+axis(2)
+abline(v=(12*(seq(2,32,by=5)))+1, col="lightgray", lty="dotted")
+abline(h=(seq(0,150,25)), col="lightgray", lty="dotted")
+title(main="SRISK over time for Aberdeen Asset Management", 
+      sub="test",
+      ylab="SRISK",
+      xlab="time")
+linear.model = lm(RHolyGrail_subset1$srisk ~ RHolyGrail_subset1$Date)
+abline(linear.model, col="blue")
+
+
+plot(RHolyGrail_subset1$Date, 
+     RHolyGrail_subset1$srisk, 
+     main = "SRISK over time for Aberdeen Asset Management",
+     pch = ".",
+     typ='l')
+
 
 plot(ocus.RHolyGrail_sb)
 
