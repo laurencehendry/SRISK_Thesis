@@ -75,7 +75,31 @@ RHolyGrail$Date <- as.Date(RHolyGrail$days, origin = '1900-01-01')
 summary(RHolyGrail)
 
 ############################
-## Sub-set our data
+## Generate nice summary statistics for our entire dataset 
+############################
+
+########## Plot frequency of observations
+
+sjp.setTheme(theme = "scatter",
+             geom.label.size = 3.5,
+             geom.label.color = "black",
+             axis.textsize = .8,
+             axis.title.size = .9)
+
+sjp.frq(RHolyGrail$country_ordinal, 
+        sort.frq = "asc",
+        axisTitle.x = "Country",
+        axisTitle.y = "Number of Observations",
+        coord.flip = TRUE,
+        labelPos = "outside")
+
+########## Plotting all SRisk over time
+
+srisk_ts <- ts(RHolyGrail$srisk)
+plot.ts(srisk_ts)
+
+############################
+## Sub-set our data (example of Aberdeen Asset Management)
 ############################
 #unit is limited to AMC Aberdeen Asset Management 
 RHolyGrail_subset1 <- subset(RHolyGrail, 
@@ -86,7 +110,6 @@ RHolyGrail_subset1 <- subset(RHolyGrail,
 #DOESN'T WORK
 RHolyGrail_subset2 <- subset(RHolyGrail_subset1, RHolyGrail_subset1$Date >= 2002-08-10,
                              select=c(days:Date))
-
 View(RHolyGrail_subset2)
 
 ############################
@@ -112,6 +135,7 @@ RHolyGrail_sb <- pdata.frame(RHolyGrail_subset1)
 # and p.57 'testing for breaks' http://www.wise.xmu.edu.cn/2007summerworkshop/download/Advanced%20Topics%20in%20Time%20Series%20Econometrics%20Using%20R1_ZongwuCAI.pdf
 
 ########## Chow test:
+
 # test whether volatility for Aberdeen Asset Management remained constant over the years
 
 sctest(RHolyGrail_sb$srisk ~ RHolyGrail_sb$Date + RHolyGrail_sb$EU_CRR, 
@@ -165,6 +189,7 @@ par(mfrow=c(2,1),
 plot(ocus.RHolyGrail_sb)
 plot(ocus.RHolyGrail_sb, alpha = 0.01, alt.boundary = TRUE)
 
+
 ########## Zivot & Andrews test:
 
 # http://artax.karlin.mff.cuni.cz/r-help/library/urca/html/ur.za.html
@@ -173,44 +198,6 @@ plot(ocus.RHolyGrail_sb, alpha = 0.01, alt.boundary = TRUE)
 # Doesn't work: 
 za.RHolyGrail_za <- ur.za(RHolyGrail_sb, model="both", lag=2)
 
-
-
-############################
-## Write to .CSV file
-############################
-
-write.table(RHolyGrail, file = "RHolyGrail_worked.csv", row.names=TRUE, sep = ",")
-
-############################
-## Generate nice summary statistics
-############################
-#taking Aberdeen Asset Management as our example
-
-sjp.setTheme(theme = "scatter",
-             geom.label.size = 3.5,
-             geom.label.color = "black",
-             axis.textsize = .8,
-             axis.title.size = .9)
-
-sjp.frq(RHolyGrail$country_ordinal, 
-        sort.frq = "asc",
-        axisTitle.x = "Country",
-        axisTitle.y = "Number of Observations",
-        coord.flip = TRUE,
-        labelPos = "outside")
-
-sjp.frq(RHolyGrail_subset1$firmleverage,
-        RHolyGrail_subset1$days,
-        type = "dens",
-        showNormalCurve = TRUE,
-        normalCurveAlpha = .3,
-        axisTitle.x = "Time",
-        axisTitle.y = "Leverage",
-        labelPos = "outside")
-
-plot(RHolyGrail_subset1$firmleverage,
-     RHolyGrail_subset1$days)
-
 ############################
 ## Generate nice chronological graphs
 ############################
@@ -218,7 +205,16 @@ plot(RHolyGrail_subset1$firmleverage,
 ########## For generic y over time (x)
 
 # http://www.r-bloggers.com/how-to-plot-a-graph-in-r/
-par(mfrow=c(1,1), #multiple graphs 
+
+#simple plot of srisk over time for Aberdeen
+plot(RHolyGrail_subset1$Date, 
+     RHolyGrail_subset1$srisk, 
+     main = "SRISK over time for Aberdeen Asset Management",
+     pch = ".",
+     typ='l')
+
+#to create a double plot space for easy contrast for srisk regression w/ and w/o EU_CRR policy
+par(mfrow=c(2,1), #multiple graphs 
     mex = 0.8, #margin size
     ps = 9, #font size
     pty = "s", #or m
@@ -236,6 +232,7 @@ abline(v=(12*(seq(2,32,by=5)))+1, col="lightgray",
 abline(h=(seq(0,150,25)), col="lightgray",
        lty="dotted")
 
+#plot with EU_CRR policy
 plot(RHolyGrail_subset1$Date, 
      RHolyGrail_subset1$srisk, 
      ann=F,
@@ -249,25 +246,39 @@ par(tcl= -0.5)
 axis(2)
 abline(v=(12*(seq(2,32,by=5)))+1, col="lightgray", lty="dotted")
 abline(h=(seq(0,150,25)), col="lightgray", lty="dotted")
-title(main="SRISK over time for Aberdeen Asset Management", 
+title(main="SRISK regression over time for Aberdeen with EU CRR", 
       sub="test",
       ylab="SRISK",
       xlab="time")
-linear.model = lm(RHolyGrail_subset1$srisk ~ RHolyGrail_subset1$Date)
-abline(linear.model, col="blue")
+linear.model = lm(RHolyGrail_subset1$srisk ~ RHolyGrail_subset1$Date + RHolyGrail_subset1$EU_CRR) #dubious time series model
+abline(linear.model, 
+       col="blue") #only using the first two of 3 regression coefficients
 
-
+#plot without EU_CRR policy
 plot(RHolyGrail_subset1$Date, 
      RHolyGrail_subset1$srisk, 
-     main = "SRISK over time for Aberdeen Asset Management",
+     ann=F,
      pch = ".",
      typ='l')
-
-
-plot(ocus.RHolyGrail_sb)
+par(tcl= -0.2)
+axis(1, at=seq(1, 445, by=12), labels=F, lwd=1, lwd.ticks=1)
+par(tcl= -0.5)
+axis(1, at=seq(1 + 12*2, 450, by=60), labels=seq(1975,2010,5), lwd=0, lwd.ticks=2)
+par(tcl= -0.5)
+axis(2)
+abline(v=(12*(seq(2,32,by=5)))+1, col="lightgray", lty="dotted")
+abline(h=(seq(0,150,25)), col="lightgray", lty="dotted")
+title(main="SRISK regression over time for Aberdeen without EU CRR", 
+      sub="test",
+      ylab="SRISK",
+      xlab="time")
+linear.model = lm(RHolyGrail_subset1$srisk ~ RHolyGrail_subset1$Date) #dubious time series model
+abline(linear.model, 
+       col="blue") #only using the first two of 3 regression coefficients
 
 ########## For outputting leverage over time with sjp
 
+#using SJP
 sjp.setTheme(theme  = "scatter",
              geom.label.size = 10,
              axis.title.size = .85,
@@ -285,11 +296,9 @@ sjp.scatter(RHolyGrail_subset1$Date,
             fitmethod = "loess", 
             showTotalFitLine = TRUE)
 
-########## Plotting all SRisk over time
-
-srisk_ts <- ts(RHolyGrail$srisk)
-plot.ts(srisk_ts)
-
+#using the plot method (needs work)
+plot(RHolyGrail_subset1$firmleverage,
+     RHolyGrail_subset1$days)
 
 ############################
 ## Nonparametric multiple change point analysis of multivariate data
@@ -348,4 +357,9 @@ for (i in 1:length(unique(fake$ID))) {
 
 coplot (y ~ year|tradingname.ordinal, type="b", data=RHolyGrail)
 
+############################
+## Write to .CSV file
+############################
+
+write.table(RHolyGrail, file = "RHolyGrail_worked.csv", row.names=TRUE, sep = ",")
 
