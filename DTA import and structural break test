@@ -13,7 +13,6 @@
 library(base)
 library(rio) # swiss army knife for imports
 library(plyr) # count occurences
-library(dplyr) # data wrangling
 library(tidyr) # data wrangling
 library(ggplot2) # nice plots
 library(stargazer) # nicer regression output which looks like a real publication
@@ -26,6 +25,7 @@ library(gplots)
 library(knitr) 
 
 # used:
+library(dplyr) # data wrangling
 library(readstata13) # helps import from Stata 13
 library(DataCombine) # helps with dates
 library(lubridate) # helps with dates
@@ -36,6 +36,7 @@ library(foreign) # helps import from other statistical suites
 library(fUnitRoots) # unit root tests (including Zivot-Andrews)
 library(timeSeries)
 library(timeDate)
+library(ecp) # R package for nonparametric multiple change point analysis of multivariate data
 
 ############################
 ## Set the correct working directory
@@ -265,6 +266,8 @@ plot(RHolyGrail_subset1$Date,
 
 plot(ocus.RHolyGrail_sb)
 
+########## For outputting leverage over time with sjp
+
 sjp.setTheme(theme  = "scatter",
              geom.label.size = 10,
              axis.title.size = .85,
@@ -282,10 +285,64 @@ sjp.scatter(RHolyGrail_subset1$Date,
             fitmethod = "loess", 
             showTotalFitLine = TRUE)
 
-#more accurate time series plot attempt
-plot(RHolyGrail$srisk)
+########## Plotting all SRisk over time
+
 srisk_ts <- ts(RHolyGrail$srisk)
 plot.ts(srisk_ts)
+
+
+############################
+## Nonparametric multiple change point analysis of multivariate data
+############################
+
+#https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf
+
+########## Example to be converted: 
+
+# Load ECP change point package
+library(ecp)
+library(dplyr)
+​
+# Create fake data -----------
+fake <- data.frame() # create an empty data frame
+for (i in 1:10) {
+  base_num <- rnorm(1, mean = 5, sd = 2) 
+  period1 <- rnorm(100)
+  period2 <- rnorm(100, 0, base_num)
+  period3 <- rnorm(100, base_num, 3)
+  value <- matrix(c(period1, period2, period3), ncol = 1)
+  temp <- data.frame(ID = i, value)
+  fake <- rbind(fake, temp)
+}
+​
+# Run change point model ---------------------------------
+# Not data is assumed to be incorrect time series order
+# use dplyr::arrange(GROUPING_VAR, TIME_VAR)
+​
+fake_with_change_points <- data.frame()
+for (i in 1:length(unique(fake$ID))) {
+  temp <- fake %>% filter(ID == i)
+  temp_out <- e.divisive(X = as.matrix(temp['value']))
+  # Extract position of the estimated change points
+  estimated_cp <- temp_out$estimates[
+    seq(from = 2, to = length(temp_out$estimates) - 1)]
+  # Put change points in original data frame for indiv.
+  est_changes <- rep(0, nrow(temp)) 
+  est_changes[estimated_cp] <- 1
+  ​
+  # Combine into one data frame with all units
+  temp$est_changes <- est_changes
+  fake_with_change_points <- rbind(fake_with_change_points,
+                                   temp)
+}
+​
+## fake_with_change_points includes the original grouped time 
+# series with a new dummy variable (est_changes) that is 1
+# at the estimated change point and 0 otherwise.
+
+
+
+
 
 #exploring panel data
 
