@@ -1,0 +1,412 @@
+############################
+## Laurence Hendry
+## R version used: RStudio 0.99.489 
+## Hertie School MPP Thesis 
+## Thanks to NYU Stern V-Lab for Dataset
+############################
+
+#originally we have time series
+#panel data for a specific bank
+
+############################
+## Load packages
+############################
+
+# not used:
+library(base)
+library(rio) # swiss army knife for imports
+library(plyr) # count occurences
+library(tidyr) # data wrangling
+library(ggplot2) # nice plots
+library(stargazer) # nicer regression output which looks like a real publication
+library(car) # scatterplots 
+library(httr) # scraping from http sites
+library(XML) # Tool for generating XML file
+library(WDI) # Scraping Data from the World Bank
+library(countrycode) # provides world bank country codes 
+library(gplots)
+library(knitr) 
+
+# used:
+library(dplyr) # data wrangling
+library(readstata13) # helps import from Stata 13
+library(DataCombine) # helps with dates
+library(lubridate) # helps with dates
+library(strucchange) # structural change test package 
+library(plm) # package for handling panel data
+library(sjPlot) # makes nice graphs, see: http://strengejacke.de/sjPlot/ 
+library(foreign) # helps import from other statistical suites
+library(fUnitRoots) # unit root tests (including Zivot-Andrews)
+library(timeSeries)
+library(timeDate)
+library(ecp) # R package for nonparametric multiple change point analysis of multivariate data
+library(changepoint)
+
+############################
+## Set the correct working directory
+############################
+
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/Special Folder/R Laurence Folder - 20.1.16")
+
+############################
+## .DTA from STATA as .CSV Import
+############################
+
+#import the .csv from STATA 13 (RHolyGrail.csv)
+
+#remove incorrectly formatted data columns
+RHolyGrail[9]<- NULL
+RHolyGrail[10] <- NULL
+RHolyGrail$edate1 <- NULL
+
+#rename variables correctly 
+names(RHolyGrail)[1] <-'days'
+names(RHolyGrail)[2] <-'MES'
+names(RHolyGrail)[3] <-'dailyvariance'
+names(RHolyGrail)[4] <-'mscibeta'
+names(RHolyGrail)[5] <-'mscicorrelation'
+names(RHolyGrail)[6] <-'firmleverage'
+names(RHolyGrail)[7] <-'srisk'
+names(RHolyGrail)[8] <-'marketcap'
+
+############################
+## Get R to read dates correctly
+############################
+
+RHolyGrail$Date <- as.Date(RHolyGrail$days, origin = '1900-01-01')
+
+#get a summary of the variables to check
+summary(RHolyGrail)
+
+############################
+## Generate nice summary statistics for our entire dataset 
+############################
+
+########## Plot frequency of observations
+
+sjp.setTheme(theme = "scatter",
+             geom.label.size = 3.5,
+             geom.label.color = "black",
+             axis.textsize = .8,
+             axis.title.size = .9)
+
+sjp.frq(RHolyGrail$country_ordinal, 
+        sort.frq = "asc",
+        axisTitle.x = "Country",
+        axisTitle.y = "Number of Observations",
+        coord.flip = TRUE,
+        labelPos = "outside")
+
+########## Plotting all SRisk over time
+
+srisk_ts <- ts(RHolyGrail$srisk)
+plot.ts(srisk_ts)
+
+############################
+## Sub-set our data (example of Aberdeen Asset Management)
+############################
+
+#unit is limited to AMC Aberdeen Asset Management 
+
+RHolyGrail_subset1 <- subset(RHolyGrail, 
+                             code_ordinal=="ADN_LN")
+
+#TIME NEEDS TO BE CORRECTLY CODED HERE
+
+#look into split function
+
+RHolyGrail_subset1ts <- ts(RHolyGrail_subset1, 
+                           frequency=12, 
+                           start=c(2000,1),
+                           end=c(2006,12)) #create subset by date and make it a time series
+
+#limit timeframe to specific dates, e.g. after 2002-08-10 -DOESN'T WORK
+
+RHolyGrail_subset2 <- subset(RHolyGrail_subset1, 
+                             RHolyGrail_subset1$Date >= 2002-08-10,
+                             select=c(days:Date))
+
+View(RHolyGrail_subset2)
+
+
+############################
+## "plm"
+############################
+
+RHolyGrail_sb <- pdata.frame(RHolyGrail_subset1)
+
+#attempting to find an equivalent command to xtset 
+#stumbled upon: http://www.rdocumentation.org/packages/qogdata/functions/xtset
+#but 'xtset' does not appear supported in the plm package
+#xtset(dataset = RHolyGrail,
+#  data = c("code_ordinal", "Date"),
+#  spec = c("tradingname_ordinal", "days"),
+#  name = "srisk for companies, time series data")
+
+panel <- pdata.frame(RHolyGrail, index=c("tradingname_ordinal", "Date"))
+
+############################
+## Sub-set our data (example of Aberdeen Asset Management for 2009-2010)
+############################
+
+#limit the unit to AMC Aberdeen Asset Management 
+
+Aberdeen1 <- subset(panel, code_ordinal=="ADN_LN")
+Aberdeen1 <- subset(Aberdeen1, days>=40000)
+Aberdeen1 <- subset(Aberdeen1, days<=41000)
+View(RHolyGrail_Aberdeen1)
+
+#limit the timeframe to a specific window using the 'split' function
+#https://stat.ethz.ch/R-manual/R-devel/library/base/html/strsplit.html
+#RHolyGrail_Aberdeen1(RHolyGrail_Aberdeen1$days >= 40000 & RHolyGrail_Aberdeen1$days <= 41000, )
+#flights[flights$month == 1 & flights$day == 1, ]
+#filter(flights, month == 1 | month == 2)
+#filter(RHolyGrail_Aberdeen1, days == 40000)
+#RHolyGrail_Aberdeen1[40000:41000, ]
+#RHolyGrail_Aberdeen1['window']
+#RHolyGrail_Aberdeen1ts <- ts(RHolyGrail_Aberdeen1, 
+#                             frequency=12, 
+#                             start=c(2000,1),
+#                             end=c(2006,12)) #create subset by date and make it a time series
+#RHolyGrail_Aberdeen1ts$Date2 <- as.Date(RHolyGrailAberdeen1ts$days, origin = '1900-01-01')
+#View(RHolyGrail_Aberdeen1ts)
+#limit timeframe to specific dates, e.g. after 2002-08-10 -DOESN'T WORK
+#RHolyGrail_subset2 <- subset(RHolyGrail_subset1, 
+#                             RHolyGrail_subset1$Date >= 2002-08-10,
+#                             select=c(days:Date))
+#View(RHolyGrail_subset2)
+
+############################
+## Structural Break tests
+############################
+
+# For structural break tests, see p.56-7 https://cran.r-project.org/web/packages/strucchange/strucchange.pdf 
+# and https://cran.r-project.org/web/packages/strucchange/vignettes/strucchange-intro.pdf 
+# and p.57 'testing for breaks' http://www.wise.xmu.edu.cn/2007summerworkshop/download/Advanced%20Topics%20in%20Time%20Series%20Econometrics%20Using%20R1_ZongwuCAI.pdf
+
+########## Chow test:
+
+# test whether volatility for Aberdeen Asset Management remained constant over the years
+
+sctest(Aberdeen1$srisk ~ Aberdeen1$Date + Aberdeen1$EU_CRR, 
+       type = "Chow", 
+       point =7)
+
+########## supF test:
+
+fs.Aberdeen1_fs=Fstats(Aberdeen1$srisk ~ 1)
+print(sctest(fs.Aberdeen1_fs))
+
+# set graph parameters
+par(mfrow=c(2,1),
+    mex = 0.8,
+    ps = 9,
+    pty = "m",
+    bg = "white")
+
+# Plot F-statistics with breakpoint line 
+plot(fs.Aberdeen1_fs, main = "supF test")
+lines(breakpoints(fs.Aberdeen1_fs))
+
+# Plot RSS & BIC models
+bp.Aberdeen1_fs <- breakpoints(Aberdeen1_fs$srisk ~ 1)
+plot(bp.Aberdeen1_fs)
+
+########## OLS-CUSUM test:
+
+# CUSUM Plot tests the null hypothesis that srisk volatility remains constant over the years
+# Here we compute OLS-based CUSUM process and plot with standard and alternative boundaries
+# nb. efp = empirical fluctuation processes
+
+sctest(Aberdeen1$srisk ~ Aberdeen1$Date + Aberdeen1$EU_CRR, 
+       type = "OLS-CUSUM", 
+       point =7)
+
+
+print(sctest(ocus.Aberdeen1))
+dev.off()
+
+ocus.Aberdeen1=efp(Aberdeen1$srisk ~ 1, 
+                       type = "OLS-CUSUM")
+
+# set graph parameters
+par(mfrow=c(2,1),
+    mex = 0.8,
+    ps = 9,
+    pty = "m",
+    bg = "white")
+
+plot(ocus.Aberdeen1)
+plot(ocus.Aberdeen1, 
+     alpha = 0.01, 
+     alt.boundary = TRUE)
+
+########## Zivot & Andrews test:
+
+# http://artax.karlin.mff.cuni.cz/r-help/library/urca/html/ur.za.html
+# see p.9 https://cran.r-project.org/web/packages/fUnitRoots/fUnitRoots.pdf
+# 'allows a break at an unknown point in either the intercept,
+# the linear trend or in both' - but we have a specific date in mind...
+
+# Doesn't work: 
+
+za.Aberdeen1_za <- ur.za(Aberdeen1_fs, model="both", lag=2)
+# error 'incorrect number of subscripts on matrix'?
+
+############################
+## Generate nice chronological graphs
+############################
+
+########## For generic y over time (x)
+
+# http://www.r-bloggers.com/how-to-plot-a-graph-in-r/
+
+#simple plot of srisk over time for Aberdeen (no axis lines)
+plot(Aberdeen1$Date, 
+     Aberdeen1$srisk, 
+     main = "SRISK over time for Aberdeen Asset Management",
+     pch = ".",
+     typ='l')
+
+#to create a double plot space for easy contrast for srisk regression w/ and w/o EU_CRR policy
+par(mfrow=c(2,1), #multiple graphs 
+    mex = 0.8, #margin size
+    ps = 9, #font size
+    pty = "s", #or m
+    bg = "white",
+    tcl= -0.8)
+
+#plot with EU_CRR policy
+plot(Aberdeen1$Date, 
+     Aberdeen1$srisk, 
+     ann=F,
+     pch = ".",
+     typ='l')
+grid(nx = NULL, 
+     ny = NULL, 
+     col = "lightgray", 
+     lty = "dotted",
+     lwd = par("lwd"))
+title(main="SRISK regression over time for Aberdeen with EU CRR", 
+      sub="test",
+      ylab="SRISK",
+      xlab="time")
+linear.model = lm(Aberdeen1$srisk ~ Aberdeen1$Date + Aberdeen1$EU_CRR) #dubious time series model
+abline(linear.model, 
+       col="blue") #only using the first two of 3 regression coefficients
+
+#plot without EU_CRR policy
+plot(Aberdeen1$Date, 
+     Aberdeen1$srisk, 
+     ann=F,
+     pch = ".",
+     typ='l')
+grid(nx = NULL, 
+     ny = NULL, 
+     col = "lightgray", 
+     lty = "dotted",
+     lwd = par("lwd"))
+title(main="SRISK regression over time for Aberdeen without EU CRR", 
+      sub="test",
+      ylab="SRISK",
+      xlab="time")
+linear.model = lm(Aberdeen1$srisk ~ Aberdeen1$Date) #dubious time series model
+abline(linear.model, 
+       col="blue") #only using the first two of 3 regression coefficients
+
+########## For outputting leverage over time with sjp
+
+#using SJP
+sjp.setTheme(theme  = "scatter",
+             geom.label.size = 10,
+             axis.title.size = .85,
+             legend.size = .8,
+             legend.title.size = .8,
+             legend.pos = "right")
+
+sjp.scatter(Aberdeen1$Date, 
+            Aberdeen1$firmleverage, 
+            showRug = TRUE, 
+            title = "Aberdeen Asset Management Leverage Ratio over time", 
+            axisTitle.x = "Time", 
+            axisTitle.y = "Leverage Ratio", 
+            showGroupFitLine = TRUE, 
+            fitmethod = "loess", 
+            showTotalFitLine = TRUE)
+
+#using the plot method (needs work)
+plot(Aberdeen1$firmleverage,
+     Aberdeen1$days)
+
+############################
+## Nonparametric multiple change point analysis of multivariate data
+## "Breakout detection"
+## or "Change point detection"
+############################
+
+# https://github.com/christophergandrud/FedChangePointNote/blob/master/paper/source/MainAnalysis_Figures.R
+# https://cran.r-project.org/web/packages/ecp/vignettes/ecp.pdf
+# http://www.r-bloggers.com/evaluating-breakoutdetection/
+# http://www.r-bloggers.com/twitters-r-package-for-detecting-breakouts-in-time-series/
+# http://www.r-bloggers.com/an-introduction-to-change-points-packages-ecp-and-breakoutdetection/
+
+########## Example to be converted: 
+
+# Load ECP change point package
+
+# Create fake data -----------
+fake <- data.frame() # create an empty data frame
+for (i in 1:10) {
+  base_num <- rnorm(1, mean = 5, sd = 2) 
+  period1 <- rnorm(100)
+  period2 <- rnorm(100, 0, base_num)
+  period3 <- rnorm(100, base_num, 3)
+  value <- matrix(c(period1, period2, period3), ncol = 1)
+  temp <- data.frame(ID = i, value)
+  fake <- rbind(fake, temp)
+}
+
+# Run change point model ---------------------------------
+# Not data is assumed to be incorrect time series order
+# use dplyr::arrange(GROUPING_VAR, TIME_VAR)
+
+fake_with_change_points <- data.frame()
+for (i in 1:length(unique(fake$ID))) {
+  temp <- fake %>% filter(ID == i)
+  temp_out <- e.divisive(X = as.matrix(temp['value']))
+  # Extract position of the estimated change points
+  estimated_cp <- temp_out$estimates[
+    seq(from = 2, to = length(temp_out$estimates) - 1)]
+  # Put change points in original data frame for indiv.
+  est_changes <- rep(0, nrow(temp)) 
+  est_changes[estimated_cp] <- 1
+  
+  # Combine into one data frame with all units
+  temp$est_changes <- est_changes
+  fake_with_change_points <- rbind(fake_with_change_points,
+                                   temp)
+}
+
+## fake_with_change_points includes the original grouped time 
+# series with a new dummy variable (est_changes) that is 1
+# at the estimated change point and 0 otherwise.
+
+#exploring panel data
+
+coplot (y ~ year|tradingname.ordinal, type="b", data=RHolyGrail)
+
+############################
+## Change point Analysis using "changepoint"
+############################
+
+# http://www.r-bloggers.com/changepoint-analysis-of-time-series/ 
+
+
+
+
+############################
+## Write to .CSV file
+############################
+
+write.table(Aberdeen1, file = "Aberdeen subset.csv", row.names=TRUE, sep = ",")
+
