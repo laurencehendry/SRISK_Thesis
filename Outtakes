@@ -1,0 +1,154 @@
+# Load ECP change point package
+library(ecp)
+library(dplyr)
+
+# Create fake data -----------
+fake <- data.frame() # create an empty data frame
+for (i in 1:10) {
+  base_num <- rnorm(1, mean = 5, sd = 2) 
+  period1 <- rnorm(100)
+  period2 <- rnorm(100, 0, base_num)
+  period3 <- rnorm(100, base_num, 3)
+  value <- matrix(c(period1, period2, period3), ncol = 1)
+  temp <- data.frame(ID = i, value)
+  fake <- rbind(fake, temp)
+}
+
+# Run change point model ---------------------------------
+# Not data is assumed to be incorrect time series order
+# use dplyr::arrange(GROUPING_VAR, TIME_VAR)
+
+fake_with_change_points <- data.frame()
+for (i in 1:length(unique(fake$ID))) {
+  temp <- fake %>% filter(ID == i)
+  temp_out <- e.divisive(X = as.matrix(temp['value']))
+  # Extract position of the estimated change points
+  estimated_cp <- temp_out$estimates[
+    seq(from = 2, to = length(temp_out$estimates) - 1)]
+  # Put change points in original data frame for indiv.
+  est_changes <- rep(0, nrow(temp)) 
+  est_changes[estimated_cp] <- 1
+  
+  # Combine into one data frame with all units
+  temp$est_changes <- est_changes
+  fake_with_change_points <- rbind(fake_with_change_points,
+                                   temp)
+}
+
+## fake_with_change_points includes the original grouped time 
+# series with a new dummy variable (est_changes) that is 1
+# at the estimated change point and 0 otherwise.
+
+
+
+###### outakes for making correct axis lines for graphs
+# http://www.statmethods.net/advgraphs/axes.html 
+# https://stat.ethz.ch/R-manual/R-devel/library/graphics/html/grid.html
+
+par(mfrow=c(2,1), #multiple graphs 
+    mex = 0.8, #margin size
+    ps = 9, #font size
+    pty = "s", #or m
+    bg = "white",
+    tcl= -0.8)
+axis(1, 
+     at=seq(1, 
+            445, 
+            by=12), 
+     labels=F, 
+     lwd=1, 
+     lwd.ticks=1)
+abline(v=(12*(seq(2,32,by=5)))+1, col="lightgray",
+       lty="dotted")
+abline(h=(seq(0,150,25)), col="lightgray",
+       lty="dotted")
+
+
+par(tcl= -0.2)
+axis(1, at=seq(1, 445, by=12), labels=F, lwd=1, lwd.ticks=1)
+
+par(tcl= -0.5)
+axis(1, at=seq(1 + 12*2, 450, by=60), labels=seq(1975,2010,5), lwd=0, lwd.ticks=2)
+
+par(tcl= -0.5)
+axis(2)
+
+abline(v=(12*(seq(2,32,by=5)))+1, col="lightgray", lty="dotted")
+abline(h=(seq(0,150,25)), col="lightgray", lty="dotted")
+
+
+
+############################
+## Sub-set our data (example of Aberdeen Asset Management)
+############################
+
+#unit is limited to AMC Aberdeen Asset Management 
+
+RHolyGrail_subset1 <- subset(RHolyGrail, 
+                             code_ordinal=="ADN_LN")
+
+#TIME NEEDS TO BE CORRECTLY CODED HERE
+
+#look into split function
+
+RHolyGrail_subset1ts <- ts(RHolyGrail_subset1, 
+                           frequency=12, 
+                           start=c(2000,1),
+                           end=c(2006,12)) #create subset by date and make it a time series
+
+#limit timeframe to specific dates, e.g. after 2002-08-10 -DOESN'T WORK
+
+RHolyGrail_subset2 <- subset(RHolyGrail_subset1, 
+                             RHolyGrail_subset1$Date >= 2002-08-10,
+                             select=c(days:Date))
+
+View(RHolyGrail_subset2)
+
+
+############################
+## "plm"
+############################
+
+RHolyGrail_sb <- pdata.frame(RHolyGrail_subset1)
+
+#attempting to find an equivalent command to xtset 
+#stumbled upon: http://www.rdocumentation.org/packages/qogdata/functions/xtset
+#but 'xtset' does not appear supported in the plm package
+#xtset(dataset = RHolyGrail,
+#  data = c("code_ordinal", "Date"),
+#  spec = c("tradingname_ordinal", "days"),
+#  name = "srisk for companies, time series data")
+
+############################
+## Sub-set our data (example of Aberdeen Asset Management for 2009-2010)
+############################
+
+#limit the timeframe to a specific window using the 'split' function
+#https://stat.ethz.ch/R-manual/R-devel/library/base/html/strsplit.html
+#RHolyGrail_Aberdeen1(RHolyGrail_Aberdeen1$days >= 40000 & RHolyGrail_Aberdeen1$days <= 41000, )
+#flights[flights$month == 1 & flights$day == 1, ]
+#filter(flights, month == 1 | month == 2)
+#filter(RHolyGrail_Aberdeen1, days == 40000)
+#RHolyGrail_Aberdeen1[40000:41000, ]
+#RHolyGrail_Aberdeen1['window']
+#RHolyGrail_Aberdeen1ts <- ts(RHolyGrail_Aberdeen1, 
+#                             frequency=12, 
+#                             start=c(2000,1),
+#                             end=c(2006,12)) #create subset by date and make it a time series
+#RHolyGrail_Aberdeen1ts$Date2 <- as.Date(RHolyGrailAberdeen1ts$days, origin = '1900-01-01')
+#View(RHolyGrail_Aberdeen1ts)
+#limit timeframe to specific dates, e.g. after 2002-08-10 -DOESN'T WORK
+#RHolyGrail_subset2 <- subset(RHolyGrail_subset1, 
+#                             RHolyGrail_subset1$Date >= 2002-08-10,
+#                             select=c(days:Date))
+#View(RHolyGrail_subset2)
+
+
+########## Chow test:
+
+# test whether volatility for Aberdeen Asset Management remained constant over the years
+# http://www.inside-r.org/packages/cran/strucchange/docs/sctest.formula 
+
+sctest(Aberdeen1$srisk ~ Aberdeen1$Date + Aberdeen1$EU_CRR, # formula of model to be tested
+       type = "Chow", # also "Nyblom-Hansen" or "Rec-CUSUM" or "OLS-CUSUM"
+       point =7) 
