@@ -7,7 +7,7 @@ library(ggplot2) # nice plots
 library(stargazer) # nicer regression output which looks like a real publication
 library(car) # scatterplots 
 library(httr) # scraping from http sites
-library(XML) # Tool for generating XML file
+library(XML) # Tool for  generating XML file
 library(WDI) # Scraping Data from the World Bank 
 library(countrycode) # provides world bank country codes 
 library(DataCombine) #merge package
@@ -19,7 +19,7 @@ library(rdd) #sharp and fuzzy regression discontinuity design tool
 ## THE GRAND MERGE
 ############################
 
-setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms")
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms_2")
     
 all_files <- list.files()
 
@@ -47,20 +47,28 @@ for (i in all_files) {
 }
 
 ############################
+## GETTING RID OF EXTRA VARIABLES
+############################
+
+rm(all_files, file_id, i, temp)
+
+############################
 ## RENAME THE VARIABLES
 ############################
 
+combined.safe <- combined
+
 combined$V8 = NULL
 
-names(combined)[1] <- 'Code'
-names(combined)[2] <- 'Days'
-names(combined)[3] <- 'Marginal Expected Shortfall (MES)'
-names(combined)[4] <- 'Daily Variance for the firm that day'
-names(combined)[5] <- 'Beta of the firm with respect to MSCI World Index (Rob Engle Dynamic COnditional Beta Model)'
-names(combined)[6] <- 'Correlation of the firm to MSCI World Index (uses asymmetric dynamic conditional correlation model)'
-names(combined)[7] <- 'Firm Leverage Ratio'
-names(combined)[8] <- 'Firm Capital Shortfall (SRISK) (5.5% prudential capital ratio for Europe)'
-names(combined)[9] <- 'Firm Market Capitalisation in USD'
+names(combined)[names(combined) == "file_id"] <- 'Code'
+names(combined)[names(combined) == "V1"] <- 'Days'
+names(combined)[names(combined) == "V2"] <- 'Marginal Expected Shortfall (MES)'
+names(combined)[names(combined) == "V3"] <- 'Daily Variance for the firm that day'
+names(combined)[names(combined) == "V4"] <- 'Beta of the firm with respect to MSCI World Index (Rob Engle Dynamic Conditional Beta Model)'
+names(combined)[names(combined) == "V5"] <- 'Correlation of the firm to MSCI World Index (uses asymmetric dynamic conditional correlation model)'
+names(combined)[names(combined) == "V6"] <- 'Firm Leverage Ratio'
+names(combined)[names(combined) == "V7"] <- 'SRISK'
+names(combined)[names(combined) == "V9"] <- 'Firm Market Capitalisation in USD'
 
 ############################
 ## FORMAT THE DATE
@@ -73,8 +81,8 @@ names(combined)[9] <- 'Firm Market Capitalisation in USD'
 #as.Date(36690, origin = "1900-01-01") #example for one value
 
 
-dates <- as.Date("Date", origin = "1900-01-01") #attempt to convert entire date column
-combined$DateProper <- as.Date(combined$Date, origin = '1900-01-01')
+#dates <- as.Date("Days", origin = "1900-01-01") #attempt to convert entire date column
+combined$DateProper <- as.Date(combined$Days, origin = '1900-01-01')
 
 
 ############################
@@ -83,7 +91,7 @@ combined$DateProper <- as.Date(combined$Date, origin = '1900-01-01')
 
 #convert the accompanying .dat file into Index.csv and import into R
 
-setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms/Working")
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms_2/Working")
 
 allvars <- merge(Index, combined, by="Code")
 
@@ -95,6 +103,10 @@ allvars <- merge(Index, combined, by="Code")
 
 allvars2 <- arrange(allvars, Days)
 
+############################
+## WRITE .CSV COMMAND
+############################
+write.csv(allvars2, file = "combined_04122015.csv")
 
 ############################
 ## SHARP AND FUZZY REGRESSION DISCONTINUITY ANALYSIS
@@ -107,3 +119,8 @@ allvars2 <- arrange(allvars, Days)
 
 names(allvars2)[8] <- SRISK
 IKbandwith(allvars2$Days, allvars2$SRISK, cutpoint = NULL, verbose = FALSE, kernel = "triangular")
+
+
+
+
+
