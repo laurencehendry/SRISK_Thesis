@@ -1,0 +1,86 @@
+
+library(ecp) # R package for nonparametric multiple change point analysis of multivariate data
+library(changepoint)
+library(dplyr)
+
+#Set WD...
+
+############################
+## Import and format data
+############################
+
+#import the .csv from STATA 13 (RHolyGrail.csv)
+
+#remove incorrectly formatted data columns
+
+sub <- RHolyGrail[c(1, 8, 13, 15)]
+names(sub)[1] <-'days'
+names(sub)[2] <-'srisk'
+sub$Date <- as.Date(sub$days, origin = '1900-01-01')
+sub2 <- subset(sub, days>=40000) #2009-07-08
+sub2 <- subset(sub2, days<=40900)
+# sub2 <- subset(sub2, tradingname_ordinal=="Allianz SE")
+
+
+dplyr::arrange(sub2, tradingname_ordinal, days)
+
+sub <- sub2
+
+
+############################
+## Change Point Analysis
+############################
+
+
+
+# Run change point model ---------------------------------
+# Note data is assumed to be in correct time series order
+# use dplyr::arrange(GROUPING_VAR, TIME_VAR)
+
+#mind the format!
+#look into spread dummy variable
+?SpreadDummy
+?unique
+
+sub_change_points <- data.frame()
+for (i in unique(sub$tradingname_ordinal)) {
+  temp <- subset(sub, tradingname_ordinal == i)
+  temp_out <- e.divisive(X = as.matrix(temp['srisk']))
+  # Extract position of the estimated change points
+  estimated_cp <- temp_out$estimates[
+    seq(from = 2, to = length(temp_out$estimates) - 1)]
+  # Put change points in original data frame for indiv.
+  est_changes <- rep(0, nrow(temp)) 
+  est_changes[estimated_cp] <- 1
+  # Combine into one data frame with all units
+  temp$est_changes <- est_changes
+  sub_change_points <- rbind(sub_change_points,
+                                    temp)
+}
+
+# Identify the day, when the policy occurred
+sub2$EU_CRR <- 0
+sub2[sub2$days == 40000, names(sub2) == "EU_CRR"] <- 1
+
+# Create a lag of one 
+library(data.table)
+sub2 <- as.data.table(sub2)
+
+# Sourcing
+source("filedirectory/file.r") #use a relative file path because you specified working directory up top!
+
+sub2[, EU_CRR_lag1 := (c(NA, EU_CRR[-.N])), by = tradingname_ordinal] 
+sub2$EU_CRR_lag1 <- ifelse(is.na(sub2$EU_CRR_lag1), 0, sub2$EU_CRR_lag1)
+
+sub2[, EU_CRR_lag2 := (c(NA, EU_CRR_lag1[-.N])), by = tradingname_ordinal] 
+sub2$EU_CRR_lag2 <- ifelse(is.na(sub2$EU_CRR_lag2), 0, sub2$EU_CRR_lag2)
+
+# add as many rows as wanted
+
+sub2$EU_CRR_LAG <- sub2$EU_CRR + sub2$EU_CRR_lag1 + sub2$EU_CRR_lag2 # add further variables
+
+# Create a measure for policy success 
+sub2$PolicySuccess <- ifelse(sub2$est_changes == 1 & sub2$EU_CRR_LAG == 1, 1, 0) # be aware how to name the overall lag
+
+# Clean the data from intermediary variables
+sub2 <- sub2[, c("days", "srisk", "tradingname_ordinal", "EU_CRR", "Date", "EU_CRR_LAG", "est_changes", "PolicySuccess")]
