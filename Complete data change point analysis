@@ -1,0 +1,92 @@
+library(ecp) # R package for nonparametric multiple change point analysis of multivariate data
+library(changepoint)
+library(dplyr)
+library(DataCombine)
+library(data.table)
+?SpreadDummy
+?unique
+
+#Set WD...
+
+############################
+## Import and format data
+############################
+
+#import the .csv from STATA 13 (RHolyGrail.csv)
+
+#remove incorrectly formatted data columns
+
+sub <- RHolyGrail[c(1, 8, 13, 15)]
+names(sub)[1] <-'days'
+names(sub)[2] <-'srisk'
+sub$Date <- as.Date(sub$days, origin = '1900-01-01')
+dplyr::arrange(sub, tradingname_ordinal, days)
+
+############################
+## Change Point Analysis
+############################
+
+# Run change point model ---------------------------------
+# Note data is assumed to be in correct time series order
+# use dplyr::arrange(GROUPING_VAR, TIME_VAR)
+
+#mind the format!
+#look into spread dummy variable
+
+sub_change_points <- data.frame()
+for (i in unique(sub$tradingname_ordinal)) {
+  temp <- subset(sub, tradingname_ordinal == i)
+  temp_out <- e.divisive(X = as.matrix(temp['srisk']))
+  # Extract position of the estimated change points
+  estimated_cp <- temp_out$estimates[
+    seq(from = 2, to = length(temp_out$estimates) - 1)]
+  # Put change points in original data frame for indiv.
+  est_changes <- rep(0, nrow(temp)) 
+  est_changes[estimated_cp] <- 1
+  # Combine into one data frame with all units
+  temp$est_changes <- est_changes
+  sub_change_points <- rbind(sub_change_points,
+                             temp)
+}
+
+############################
+## Create dummy for policies from interviews
+############################
+
+# create a day when the policy occurred
+sub$EU_CRR <- 0
+sub[sub2$days == 40000, #here we can add more policy dates than just EU_CRR taken from interviews
+    names(sub2) == "EU_CRR"] <- 1
+
+############################
+## Create lag variables for policy implementation
+############################
+
+# Create a variable for lag (here with dummy data)
+
+#creating dummy data
+ID <- sort(rep(seq(1:4), 5))
+NotVar <- rep(1:5, 4)
+Dummy <-  sample(c(0, 1), size = 20, replace = TRUE)
+Data <- data.frame(ID, NotVar, Dummy)
+
+#creating lag
+DataSpread1 <- SpreadDummy(data = sub, 
+                           Var = 'EU_CRR Lage', #name variable
+                           spreadBy = -30, #set expected delay of policy, e.g. 1 month
+                           reminder = FALSE)
+
+############################
+## Create policy success indicator 
+############################
+
+# Create a measure for policy success 
+sub$PolicySuccess <- ifelse(sub$est_changes == 1 & sub$EU_CRR_LAG == 1, 1, 0) # be aware how to name the overall lag
+
+############################
+## Clean data
+############################
+
+# Clean the data from intermediary variables
+sub <- sub[, c("days", "srisk", "tradingname_ordinal", "EU_CRR", "Date", "EU_CRR_LAG", "est_changes", "PolicySuccess")]
+
