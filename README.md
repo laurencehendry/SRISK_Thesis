@@ -1,4 +1,4 @@
-![alt text](https://www.hertie-school.org/fileadmin/images/Downloads/media_events/HSG_Logo_rgb.jpg "Logo Title Text 1")
+![alt text](https://mystudies.hertie-school.org/img/1hsog_header_gr_newlogo.jpg "Hertie Logo")
 
 # SRISK_Thesis
 R Scripts for the Hertie School of Governance Masters Thesis 
