@@ -1,0 +1,658 @@
+############################
+## Laurence Hendry
+## R version used: RStudio 0.99.489 
+## Hertie School MPP Thesis 
+## Thanks to NYU Stern V-Lab for Dataset
+############################
+
+############################
+## Load packages
+############################
+
+# not used:
+library(base)
+library(rio) # swiss army knife for imports
+library(plyr) # count occurences
+library(tidyr) # data wrangling
+library(stargazer) # nicer regression output which looks like a real publication
+library(car) # scatterplots 
+library(httr) # scraping from http sites
+library(XML) # Tool for generating XML file
+library(WDI) # Scraping Data from the World Bank
+library(countrycode) # provides world bank country codes 
+library(gplots)
+library(knitr) 
+library(directlabels) #for labelling lines on plots
+
+# used:
+library(dplyr) # data wrangling
+library(readstata13) # helps import from Stata 13
+library(DataCombine) # helps with dates
+library(lubridate) # helps with dates
+library(strucchange) # structural change test package 
+library(plm) # package for handling panel data
+library(sjPlot) # makes nice graphs, see: http://strengejacke.de/sjPlot/ 
+library(foreign) # helps import from other statistical suites
+library(fUnitRoots) # unit root tests (including Zivot-Andrews)
+library(timeSeries)
+library(timeDate)
+library(ecp) # R package for nonparametric multiple change point analysis of multivariate data
+library(changepoint)
+library(repmis)
+library(gridExtra)
+library(reshape2)
+library(ggplot2) # nice plots
+
+####################################################################################
+## THE GRAND MERGE
+####################################################################################
+
+############################
+## Set the correct working directory
+############################
+
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms")
+
+############################
+## Merge loop function
+############################
+
+all_files <- list.files()
+
+# Create a NULL object to combine the individual files into
+combined <- NULL
+
+for (i in all_files) {
+  # Load and combine only if the file is a csv
+  if (tools::file_ext(i) == 'csv') {
+    # Read file
+    temp <- import(i)
+    # Create file ID from the file name and move to the front
+    file_id <- gsub(pattern = '.csv', replacement = '', i)
+    message(file_id)
+    temp$file_id <- file_id
+    temp <- MoveFront(temp, 'file_id')
+    # Bind to the main data frame
+    combined <- bind_rows(combined, temp)
+  } else {
+    message('-- Not CSV --')
+  }
+}
+
+############################
+## RENAME THE VARIABLES
+############################
+
+combined$V8 = NULL
+
+names(combined)[1] <- 'Code'
+names(combined)[2] <- 'Days'
+names(combined)[3] <- 'Marginal Expected Shortfall (MES)'
+names(combined)[4] <- 'Daily Variance for the firm that day'
+names(combined)[5] <- 'Beta of the firm with respect to MSCI World Index (Rob Engle Dynamic COnditional Beta Model)'
+names(combined)[6] <- 'Correlation of the firm to MSCI World Index (uses asymmetric dynamic conditional correlation model)'
+names(combined)[7] <- 'Firm Leverage Ratio'
+names(combined)[8] <- 'Firm Capital Shortfall (SRISK) (5.5% prudential capital ratio for Europe)'
+names(combined)[9] <- 'Firm Market Capitalisation in USD'
+
+############################
+## FORMAT THE DATE
+############################
+
+#the dates were entered/formatted in excel. The origin is 1900-01-01.
+
+dates <- as.Date("Date", origin = "1900-01-01") #attempt to convert entire date column
+combined$DateProper <- as.Date(combined$Date, origin = '1900-01-01')
+
+############################
+## ADDITIONAL VARIABLES: TRADING NAME, COUNTRY, STATUS
+############################
+
+#convert the accompanying .dat file into Index.csv and import into R
+
+#change the working directory to a ‘working’ folder
+setwd("/Users/laurencehendry/GoogleDrive/Master Thesis - Shared/Quantitative Sources/V-Lab Datasets/European_Firms/Working")
+
+allvars <- merge(Index, combined, by="Code")
+
+############################
+## SORT DATASET CHRONOLOGICALLY
+############################
+#order(allvars$Date)
+
+allvars2 <- arrange(allvars, Days)
+
+####################################################################################
+## DATA DESCRIPTION (GRAPHS) & SELECTION 
+####################################################################################
+
+############################
+## .DTA from STATA as .CSV Import
+############################
+
+#import the .csv from STATA 13 (RHolyGrail.csv)
+
+############################
+## Format the variables correctly
+############################
+
+#remove incorrectly formatted data columns
+RHolyGrail[9]<- NULL
+RHolyGrail[10] <- NULL
+RHolyGrail$edate1 <- NULL
+
+#rename variables correctly 
+names(RHolyGrail)[1] <-'days'
+names(RHolyGrail)[2] <-'MES'
+names(RHolyGrail)[3] <-'dailyvariance'
+names(RHolyGrail)[4] <-'mscibeta'
+names(RHolyGrail)[5] <-'mscicorrelation'
+names(RHolyGrail)[6] <-'firmleverage'
+names(RHolyGrail)[7] <-'srisk'
+names(RHolyGrail)[8] <-'marketcap'
+
+############################
+## Get R to read dates correctly
+############################
+
+RHolyGrail$Date <- as.Date(RHolyGrail$days, origin = '1900-01-01')
+
+#get a summary of the variables to check
+summary(RHolyGrail)
+
+############################
+## Generate nice summary statistics for our entire dataset 
+############################
+
+########## Plot frequency of observations
+
+#set SJP theme
+sjp.setTheme(theme = "scatter",
+             geom.label.size = 3.5,
+             geom.label.color = "black",
+             axis.textsize = .8,
+             axis.title.size = .9)
+
+sjp.frq(RHolyGrail$country_ordinal, 
+        sort.frq = "asc",
+        axisTitle.x = "Country",
+        axisTitle.y = "Number of Observations",
+        coord.flip = TRUE,
+        labelPos = "outside")
+
+Index2 <- dplyr::slice(Index, 1:414) #get rid of spurious observations
+sjp.frq(Index2$Country, 
+        sort.frq = "desc",
+        axisTitle.x = "Countries",
+        axisTitle.y = "Number of Banks",
+        coord.flip = TRUE,
+        labelPos = "outside")
+
+sjp.likert(RHolyGrail$status_dummy,
+        sort.frq = "asc",
+        axisTitle.x = "Country",
+        axisTitle.y = "Number of Observations",
+        coord.flip = TRUE,
+        labelPos = "outside")
+
+########## Plotting all SRISK over time
+
+srisk_ts <- ts(RHolyGrail$srisk)
+plot.ts(srisk_ts)
+
+############################
+## "plm": Linear models for panel data package
+############################
+
+panel <- pdata.frame(RHolyGrail, index=c("tradingname_ordinal", "Date"))
+
+#dplyr::arrange("tradingname_ordinal", "Date")
+#dplyr step?
+
+#panel is now an object of class data.frame that describes
+#its time and individual dimensions
+
+############################
+## Limit dataset for purpose of cross-country bank-level change-point (and possibly regression) comparison 
+## Dataframe = Index
+############################
+
+#Index correction for country selection
+Index_corrected <- dplyr::filter(Index, 
+                       Country=="United Kingdom" | 
+                         Country=="France" |
+                         Country=="Italy"|
+                         Country=="Germany"|
+                         Country=="Sweden"|
+                         Country=="Spain"|
+                         Country=="Belgium"|
+                         Country=="Netherlands"|
+                         Country=="Poland"|
+                         Country=="Greece"|
+                         Country=="Austria"|
+                         Country=="Norway"|
+                         Country=="Denmark"|
+                         Country=="Luxembourg"|
+                         Country=="Cyprus"|
+                         Country=="Finland"|
+                         Country=="Portugal"|
+                         Country=="Malta"|
+                         Country=="Romania"|
+                         Country=="Czech Republic"|
+                         Country=="Hungary")
+
+#Graph frequency of observations of different banks per country 
+sjp.frq(Index_corrected$Country, 
+        sort.frq = "desc",
+        axisTitle.x = "Countries",
+        axisTitle.y = "Number of Banks",
+        coord.flip = TRUE,
+        labelPos = "outside")
+
+############################
+## Limit dataset for purpose of cross-country bank-level change-point (and possibly regression) comparison 
+## Dataframe = RHolyGrail
+############################
+
+Bankx <- dplyr::filter(panel, 
+                       country_ordinal=="United Kingdom" | 
+                       country_ordinal=="France" |
+                        country_ordinal=="Italy"|
+                        country_ordinal=="Germany"|
+                        country_ordinal=="Sweden"|
+                        country_ordinal=="Spain"|
+                        country_ordinal=="Belgium"|
+                       country_ordinal=="Netherlands"|
+                       country_ordinal=="Poland"|
+                       country_ordinal=="Greece"|
+                       country_ordinal=="Austria"|
+                       country_ordinal=="Norway"|
+                       country_ordinal=="Denmark"|
+                       country_ordinal=="Luxembourg"|
+                       country_ordinal=="Cyprus"|
+                       country_ordinal=="Finland"|
+                       country_ordinal=="Portugal"|
+                       country_ordinal=="Malta"|
+                       country_ordinal=="Romania"|
+                       country_ordinal=="Czech Republic"|
+                       country_ordinal=="Hungary")
+
+############################
+## Investigate and drop Hungarian outlier bank OTP Bank PLC (OTP_HB)
+############################
+
+#Sub-set
+Bankx <- subset(RHolyGrail, code_ordinal=="OTP_HB") 
+summary(Bankx)
+
+#Graphic
+ggplot(data = Bankx, aes(x = days, y = srisk)) +
+  geom_line() +
+  labs(title="SRISK over time for Hungarian Bank OTP",x="Time",y="Systemic Risk")
+
+#Drop the bank
+Bankx <- subset(Bankx, code_ordinal!="OTP_HB")
+
+############################
+# Export
+############################
+
+write.table(Bankx, file = “Bankx.csv”, row.names=TRUE, sep = ",")
+
+
+############################
+## Plotting the unbalanced dataset
+############################
+
+sjp.setTheme(theme = "scatter",
+             geom.label.size = 3.5,
+             geom.label.color = "black",
+             axis.textsize = .8,
+             axis.title.size = .9)
+
+sjp.frq(Bankx$Date,
+        type = "lines",
+        showValueLabels = FALSE,
+        title = "Unbalanced Panel Data? Frequency of Observations over Time",
+        axisTitle.x = "Time",
+        axisTitle.y = "Frequency of Observations")
+
+############################
+## Active-Dead banks ratio
+############################
+
+sjp.frq(Index_corrected$Status,
+        showValueLabels = FALSE,
+        axisTitle.x = "Status",
+        axisTitle.y = "Number of Banks")
+
+# for plots: http://strengejacke.de/sjPlot/sjp.frq/
+# for group plots, try: http://strengejacke.de/sjPlot/sjp.grpfrq/
+
+############################
+## Example sub-set our data, example of Deutsche bank for 2009-2012
+############################
+
+# Generate and add specifications to a subset 
+Bankx <- subset(RHolyGrail, code_ordinal=="DBK_GR")
+Bankx <- subset(Bankx, days>=40000) #2009-07-08
+Bankx <- subset(Bankx, days<=41000) #2012-04-01
+
+View(Bankx)
+
+############################
+## Plot/eyeball the BDB suggested date of 25.06.2015 (42178) for Deutsche Bank (DBK_GR)
+############################
+
+# Generate subset
+Bankx <- subset(RHolyGrail, code_ordinal=="DBK_GR") 
+Bankx <- subset(Bankx, days>=40000) #2009-07-08
+Bankx <- subset(Bankx, days<=41000) #2012-04-01
+
+# BDB said that change point probably occured here (enforcemeent of new insolvency proceedings)
+# 'Deutsche bank change point example with BDB suggested 25-06-2015'
+ggplot(Bankx, aes(days, srisk)) +
+  geom_line() +
+  geom_vline(xintercept = 42178, linetype = 'dashed', colour = 'red') + 
+  xlab('Time') + 
+  ylab('Systemic Risk') +
+  ggtitle('Deutsche Bank SRISK with BDB suggested date 25-06-2015')
+
+############################
+## Generate nice chronological graphs
+############################
+
+########## For generic y over time (x)
+
+# http://www.r-bloggers.com/how-to-plot-a-graph-in-r/
+
+#simple plot of srisk over time for Bankx (no axis lines)
+
+par(mfrow=c(1,1), #multiple graphs 
+    mex = 0.8, #margin size
+    ps = 9, #font size
+    pty = "m", #or m
+    bg = "white",
+    tcl= -0.8)
+
+plot(Bankx$days, 
+     Bankx$srisk, 
+     main = "SRISK over time for Bankx",
+     pch = ".",
+     typ='l')
+
+########## Comparing with and without EU CRR regression line 
+
+#to create a double plot space for easy contrast for srisk regression w/ and w/o EU_CRR policy
+par(mfrow=c(2,1), #multiple graphs 
+    mex = 0.8, #margin size
+    ps = 9, #font size
+    pty = "m", #or m
+    bg = "white",
+    tcl= -0.8)
+
+#plot with EU_CRR policy
+plot(Bankx$days, 
+     Bankx$srisk, 
+     ann=F,
+     pch = ".",
+     typ='l')
+grid(nx = NULL, 
+     ny = NULL, 
+     col = "lightgray", 
+     lty = "dotted",
+     lwd = par("lwd"))
+title(main="SRISK regression over time for Bankx with EU CRR", 
+      sub="Issue: linear model has day as I.V.",
+      ylab="SRISK",
+      xlab="time")
+linear.model1 = lm(Bankx$srisk ~ Bankx$days + Bankx$EU_CRR) #dubious time series model
+abline(linear.model1, 
+       col="blue") #only using the first two of 3 regression coefficients
+
+#plot without EU_CRR policy
+plot(Bankx$days, 
+     Bankx$srisk, 
+     ann=F,
+     pch = ".",
+     typ='l')
+grid(nx = NULL, 
+     ny = NULL, 
+     col = "lightgray", 
+     lty = "dotted",
+     lwd = par("lwd"))
+title(main="SRISK regression over time for Bankx without EU CRR", 
+      sub="Issue: linear model has day as I.V.",
+      ylab="SRISK",
+      xlab="time")
+linear.model2 = lm(Bankx$srisk ~ Bankx$days) #dubious time series model
+abline(linear.model2, 
+       col="blue") #only using the first two of 3 regression coefficients
+
+########## Summary of regression outputs for two models
+
+# remember to use an F-Test, whether there is statistical significant difference between the two?
+
+summary(linear.model1)
+summary(linear.model2)
+
+########## For outputting leverage over time with sjp and LOESS regression line
+
+# using SJP to give a locally weighted scatterplot for leverage
+sjp.setTheme(theme  = "scatter",
+             geom.label.size = 1,
+             axis.title.size = .85,
+             legend.size = .8,
+             legend.title.size = .8,
+             legend.pos = "right")
+
+sjp.scatter(Bankx$Date, 
+            Bankx$firmleverage, 
+            showRug = FALSE, #show concentration of observations
+            title = "Bankx Leverage Ratio over time", 
+            axisTitle.x = "Time", 
+            axisTitle.y = "Leverage Ratio", 
+            showGroupFitLine = TRUE, 
+            fitmethod = "loess", #locally weighted scatterplot smoothing
+            geom.size = 1,
+            showTotalFitLine = TRUE)
+
+#using the plot method (needs work)
+plot(Bankx$firmleverage,
+     Bankx$days)
+
+####################################################################################
+## CHANGE POINT ANALYSIS & INDICATOR CREATION 
+####################################################################################
+
+library(ecp) # R package for nonparametric multiple change point analysis of multivariate data
+library(dplyr)
+library(DataCombine)
+library(data.table)
+?SpreadDummy
+?unique
+
+############################
+## Import and format data
+############################
+
+#import the cut-down RHolyGrail ‘selection’ file, i.e. ‘Banks.csv’
+
+#rename Bankx for purpose of this code
+sub <- Bankx
+dplyr::arrange(GROUPING_VAR, TIME_VAR)
+
+############################
+## Change Point Analysis loop (estimated 7 days for processing on one core) 
+############################
+
+#exported to a Virtual Machine for processing 
+
+sub_change_points <- data.frame()
+for (i in unique(sub$tradingname_ordinal)) {
+  temp <- subset(sub, tradingname_ordinal == i)
+  temp_out <- e.divisive(X = as.matrix(temp['srisk']))
+
+  # Extract position of the estimated change points
+
+  estimated_cp <- temp_out$estimates[
+    seq(from = 1, to = length(temp_out$estimates) - 1)]
+
+  # Put change points in original data frame for indiv.
+
+  est_changes <- rep(0, nrow(temp)) 
+  est_changes[estimated_cp] <- 1
+
+  # Combine into one data frame with all units
+
+  temp$est_changes <- est_changes
+  sub_change_points <- rbind(sub_change_points,
+                                  temp)
+}
+
+############################
+#import the full_change_points.csv, then remove and rename
+############################
+
+full_change_points$EU_CRR <- NULL
+names(full_change_points)[3] <-'Trading.Name'
+names(full_change_points_selected_countries)[3] <-'Code'
+
+############################
+#generate table of n. of change points per bank
+############################
+
+df <- aggregate(full_change_points$est_changes ~ full_change_points$tradingname_ordinal, FUN = sum)
+
+############################
+## Create dummy for policies from interviews
+############################
+
+# create a day when the policy occurred
+full_change_points$PolicyDates <- 0
+full_change_points[full_change_points$days == 41463, #policy dates from interviews, SRM EC Proposal
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 41625, #SRM Council agreement
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 41743, #EP adopts SRM
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 41981, #Council reaches agreement on SRM
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 42335, #SRM ratified by the Commission for Greece, EC adopts delegated regulation of EP, SRM fully operational 
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 42142, #Improvement of insolvency proceedings across EU passed in EC
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 42178, #EC insolvency proceedings enter force
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 41145, #OMT announcement in Aug, 2012
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 39734, #Hungary- IMF discussing loan for Hungary
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 39745, #Hungary- Agreement of policy package
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 39755, #Hungary- formal agreement to programme
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 40385, #Announcement of broad agreement to Basel III
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 40431, #Final announcement of Basel III
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 40742, #Original proposal of CRDIV/CRR by EC
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 41449, #Final legislative draft of CRDIV/CRR published
+                   names(full_change_points) == "PolicyDates"] <- 1
+full_change_points[full_change_points$days == 41638, #CRDIV/CRR applied
+                   names(full_change_points) == "PolicyDates"] <- 1
+
+############################
+## Merge the countries for banks
+############################
+
+#Import Index file first
+full_change_points_with_countries <- merge(Index, full_change_points, by="Trading.Name")
+
+############################
+## Create lag variables for policy implementation
+############################
+
+#creating lag NOTE: These generates their own variable label which is confusing
+full_change_points <- SpreadDummy(data = full_change_points, 
+                           Var = 'PolicyDates', #name variable
+                           spreadBy = -14, #set delay of policy effect, 1 fortnight
+                           reminder = FALSE)
+
+full_change_points <- SpreadDummy(data = full_change_points, 
+                                  Var = 'PolicyDates', #name variable
+                                  spreadBy = 7, #set policy expectation effect, 1 week
+                                  reminder = FALSE)
+
+names(full_change_points)[names(full_change_points) == 'PolicyDatesSpread-14'] <- 'PolicyLag'
+names(full_change_points)[names(full_change_points) == 'PolicyDatesSpread-7’] <- 'PolicyExpectation’
+
+############################
+## Create policy success indicator 
+############################
+
+# Create a measure for policy success 
+full_change_points_lag$PolicySuccess <- ifelse(full_change_points_lag$est_changes == 1 & full_change_points_lag$Policy_lag == 1, 1, 0) # be aware how to name the overall lag
+
+############################
+## Clean data
+############################
+
+# Clean the data from intermediary variables
+sub <- sub[, c("days", "srisk", "tradingname_ordinal", "EU_CRR", "Date", "EU_CRR_LAG", "est_changes", "PolicySuccess")]
+
+############################
+## Generate table for look up of dates provided in interviews
+############################
+
+date_conversion <- sub[c(1, 5)]
+date_conversion <- date_conversion[!duplicated(date_conversion), ]
+
+
+# Subsetting and performing function 
+df <- aggregate(full_change_points$est_changes ~ full_change_points$tradingname_ordinal, FUN = sum)
+
+############################
+# Generate a success indicator from change points
+############################
+
+omneity_subset$PolicySuccess_Improvement <- 0 
+
+for (i in 1:nrow(omneity_subset)){
+  # is there policy success?
+  if (omneity_subset[i,names(omneity_subset) == "PolicySuccess"] == 1){
+    lower <- i - 10
+    upper <- i + 10
+    temp <- omneity_subset[lower:upper,]
+    # Assigning 1 in original data set, if the mean risk has been reduced
+    omneity_subset[i, names(omneity_subset) == "PolicySuccess_Improvement"] <- ifelse(mean(temp[1:10, names(temp) == "srisk"]) < #depends on srisk sign
+                                                         mean(temp[11:20, names(temp) == "srisk"]),
+                                                       1, 0)
+  }
+}
+  
+############################
+# Export .csv
+############################
+
+write.table(CPs_CountrySelect_OutlierGone, file = “omneity.csv", row.names=TRUE, sep = ",")
+
+####################################################################################
+## DESCRIBING RESULTS: MAPS & GRAPHS
+####################################################################################
+
+############################
+# Import omneity.csv
+############################
+
+#Import omneity.csv
+
+############################
+# Generate map of Europe
+############################
+
+#Recode the country names to a standardised format for identification in map packages 
+require('countrycode')
+omneity$Country_iso2c <- countrycode(omneity$Country, origin = 'country.name', 
+                                     destination = 'iso2c', warn = TRUE)
