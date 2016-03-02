@@ -617,42 +617,281 @@ df <- aggregate(full_change_points$est_changes ~ full_change_points$tradingname_
 # Generate a success indicator from change points
 ############################
 
-omneity_subset$PolicySuccess_Improvement <- 0 
+#dplyr step
+#dplyr::arrange(dataset, GROUPING_VAR, TIME_VAR)
+library(dplyr)
+omneity <- dplyr::arrange(omneity, Trading.Name, days)
 
-for (i in 1:nrow(omneity_subset)){
-  # is there policy success?
-  if (omneity_subset[i,names(omneity_subset) == "PolicySuccess"] == 1){
+#CRR CRD improvement                  
+omneity$CRD_CRR_improvement <- 0 
+for (i in 1:nrow(omneity)){
+# is there policy success?
+  if (omneity[i,names(omneity) == "CRD_CRR_success"] == 1){
     lower <- i - 10
     upper <- i + 10
-    temp <- omneity_subset[lower:upper,]
+    temp <- omneity[lower:upper,]
     # Assigning 1 in original data set, if the mean risk has been reduced
-    omneity_subset[i, names(omneity_subset) == "PolicySuccess_Improvement"] <- ifelse(mean(temp[1:10, names(temp) == "srisk"]) < #depends on srisk sign
-                                                         mean(temp[11:20, names(temp) == "srisk"]),
-                                                       1, 0)
+    omneity[i, names(omneity) == "CRD_CRR_improvement"] <- ifelse(mean(temp[1:10, names(temp) == "srisk"]) > 
+                                                                                mean(temp[12:21, names(temp) == "srisk"]), 1, 0)
+                                                                               #depends on srisk sign
+ }
+}
+
+#RDD improvement   
+omneity$RDD_improvement <- 0 
+for (i in 1:nrow(omneity)){
+  # is there policy success?
+  if (omneity[i,names(omneity) == "RDD_success"] == 1){
+    lower <- i - 10
+    upper <- i + 10
+    temp <- omneity[lower:upper,]
+    # Assigning 1 in original data set, if the mean risk has been reduced
+    omneity[i, names(omneity) == "RDD_improvement"] <- ifelse(mean(temp[1:10, names(temp) == "srisk"]) > 
+                                                                    mean(temp[12:21, names(temp) == "srisk"]), 1, 0)
+    #depends on srisk sign
   }
 }
-  
+
+#Hungary improvement    
+omneity$Hungary_improvement <- 0 
+for (i in 1:nrow(omneity)){
+  # is there policy success?
+  if (omneity[i,names(omneity) == "Hungary_success"] == 1){
+    lower <- i - 10
+    upper <- i + 10
+    temp <- omneity[lower:upper,]
+    # Assigning 1 in original data set, if the mean risk has been reduced
+    omneity[i, names(omneity) == "Hungary_improvement"] <- ifelse(mean(temp[1:10, names(temp) == "srisk"]) > 
+                                                                mean(temp[12:21, names(temp) == "srisk"]), 1, 0)
+    #depends on srisk sign
+  }
+}
+
 ############################
 # Export .csv
 ############################
-
-write.table(CPs_CountrySelect_OutlierGone, file = “omneity.csv", row.names=TRUE, sep = ",")
-
+                          
+write.table(CPs_CountrySelect_OutlierGone, file = “omneity.csv, row.names=TRUE, sep = ",")
+                                      
 ####################################################################################
 ## DESCRIBING RESULTS: MAPS & GRAPHS
 ####################################################################################
 
+library(maps)
+library(mapdata)
+library(car)              
+library(countrycode)
+library(rworldxtra)
+
 ############################
-# Import omneity.csv
+## Necessary first step for maps: correcting the Index file
 ############################
 
-#Import omneity.csv
+#relativise map data for sample banks across countries 
+Index$Status <- NULL
+Index <- Index[1:414,]
+Index <- dplyr::filter(Index, 
+                       Country=="United Kingdom" | 
+                         Country=="France" |
+                         Country=="Italy"|
+                         Country=="Germany"|
+                         Country=="Sweden"|
+                         Country=="Spain"|
+                         Country=="Belgium"|
+                         Country=="Netherlands"|
+                         Country=="Poland"|
+                         Country=="Greece"|
+                         Country=="Austria"|
+                         Country=="Norway"|
+                         Country=="Denmark"|
+                         Country=="Luxembourg"|
+                         Country=="Cyprus"|
+                         Country=="Finland"|
+                         Country=="Portugal"|
+                         Country=="Malta"|
+                         Country=="Romania"|
+                         Country=="Czech Republic"|
+                         Country=="Hungary")
+Index <- dplyr::filter(Index, !Index$Code=="ADM_LN"&
+                         !Index$Code=="AGN_NA" &
+                         !Index$Code=="ALV_GR" &
+                         !Index$Code=="AML_LN" &
+                         !Index$Code=="AV/_LN" &
+                         !Index$Code=="CASS_IM"&
+                         !Index$Code=="CNP_FP" &
+                         !Index$Code=="CS_FP" &
+                         !Index$Code=="DL_NA" &
+                         !Index$Code=="ELE_FP" &
+                         !Index$Code=="FOY_LX" &
+                         !Index$Code=="FSR_US" &
+                         !Index$Code=="GE1_GR" &
+                         !Index$Code=="GJF_NO" &
+                         !Index$Code=="G_IM" &
+                         !Index$Code=="HNR1_GR" &
+                         !Index$Code=="JLT_LN" &
+                         !Index$Code=="MAP_SM" &
+                         !Index$Code=="MI_IM" &
+                         !Index$Code=="MUV2_GR" &
+                         !Index$Code=="NBG6_GR" &
+                         !Index$Code=="OML_LN" &
+                         !Index$Code=="PZU_PW" &
+                         !Index$Code=="RSA_LN" &
+                         !Index$Code=="SCR_FP" &
+                         !Index$Code=="SL/_LN" &
+                         !Index$Code=="TOP_DC" &
+                         !Index$Code=="TRYG_DC" &
+                         !Index$Code=="UNI_IM" &
+                         !Index$Code=="UQA_AV" &
+                         !Index$Code=="US_IM" &
+                         !Index$Code=="VIG_AV" &
+                         !Index$Code=="WUW_GR" &
+                         !Index$Code=="AGS_BB" &
+                         !Index$Code=="APR_FP" &
+                         !Index$Code=="BME_SM" &
+                         !Index$Code=="BYG_LN" &
+                         !Index$Code=="DB1_GR" &
+                         !Index$Code=="EXAE_GA" &
+                         !Index$Code=="GCO_SM" &
+                         !Index$Code=="LSE_LN" &
+                         !Index$Code=="PRU_LN" &
+                         !Index$Code=="SR_NA" &
+                         !Index$Code=="WSH_US")
 
 ############################
-# Generate map of Europe
+## choropleth map for CRR_CRD successes data
 ############################
 
-#Recode the country names to a standardised format for identification in map packages 
-require('countrycode')
-omneity$Country_iso2c <- countrycode(omneity$Country, origin = 'country.name', 
-                                     destination = 'iso2c', warn = TRUE)
+#create relative table for the map function
+MapPrep1 <- aggregate(omneity$CRD_CRR_improvement ~ omneity$Country, FUN = sum)
+names(MapPrep1)[1] <-'Country'
+names(MapPrep1)[2] <-'CRD_CRR_improvements'
+#create a table of banks per country
+aggregates <- table(Index$Country)
+aggregates <- data.frame(aggregates)
+names(aggregates)[1] <-'Country'
+names(aggregates)[2] <-'Banks_per_country'
+#merge 
+MapPrep1 <- merge(MapPrep1, aggregates, by= "Country")
+#relatavise 
+MapPrep1$RelativeSuccess <- MapPrep1$CRD_CRR_improvement / MapPrep1$Banks_per_country
+#make country codes readable
+MapPrep1$Country_iso2c <- countrycode(MapPrep1$Country, origin = 'country.name', 
+                                      destination = 'un', warn = TRUE)
+
+#map
+d <- data.frame(country=c(MapPrep1$Country_iso2c),
+                value=MapPrep1$RelativeSuccess)
+n <- joinCountryData2Map(d, 
+                         joinCode="UN", 
+                         nameJoinColumn="country",
+                         mapResolution = "high")
+mapCountryData(n, 
+               nameColumnToPlot="value", 
+               mapTitle="Improvements per bank after CRDIV/CRR Policy",
+               mapRegion="Europe",
+               catMethod="pretty", #quantiles, fixedWidth, pretty, c(0:5)
+               colourPalette=c('black','green'),
+               addLegend=TRUE,
+               borderCol="black",
+               missingCountryCol="grey")
+
+
+############################
+## choropleth map for RDD success data
+############################
+
+#create relative table for the map function
+MapPrep2 <- aggregate(omneity$RDD_improvement ~ omneity$Country, FUN = sum)
+names(MapPrep2)[1] <-'Country'
+names(MapPrep2)[2] <-'RDD_improvement'
+#merge 
+MapPrep2 <- merge(MapPrep2, aggregates, by= "Country")
+#relatavise 
+MapPrep2$RelativeSuccess <- MapPrep2$RDD_improvement / MapPrep2$Banks_per_country
+#make country codes readable
+MapPrep2$Country_iso2c <- countrycode(MapPrep2$Country, origin = 'country.name', 
+                                      destination = 'un', warn = TRUE)
+
+#map
+d <- data.frame(country=c(MapPrep2$Country_iso2c),
+                value=MapPrep2$RelativeSuccess)
+n <- joinCountryData2Map(d, 
+                         joinCode="UN", 
+                         nameJoinColumn="country",
+                         mapResolution = "high")
+mapCountryData(n, 
+               nameColumnToPlot="value", 
+               mapTitle="Improvements per bank after RDD Policy",
+               mapRegion="Europe",
+               catMethod="pretty", #quantiles, fixedWidth, pretty, c(0:5)
+               colourPalette=c('black','green'),
+               addLegend=TRUE,
+               borderCol="black",
+               missingCountryCol="grey")
+
+############################
+## choropleth map for Hungary success data
+############################
+
+#create relative table for the map function
+MapPrep3 <- aggregate(omneity$Hungary_improvement ~ omneity$Country, FUN = sum)
+names(MapPrep3)[1] <-'Country'
+names(MapPrep3)[2] <-'Hungary_improvement'
+#merge 
+MapPrep3 <- merge(MapPrep3, aggregates, by= "Country")
+#relatavise 
+MapPrep3$RelativeSuccess <- MapPrep3$Hungary_improvement / MapPrep3$Banks_per_country
+#make country codes readable
+MapPrep3$Country_iso2c <- countrycode(MapPrep3$Country, origin = 'country.name', 
+                                      destination = 'un', warn = TRUE)
+
+#map
+d <- data.frame(country=c(MapPrep3$Country_iso2c),
+                value=MapPrep3$RelativeSuccess)
+n <- joinCountryData2Map(d, 
+                         joinCode="UN", 
+                         nameJoinColumn="country",
+                         mapResolution = "high")
+mapCountryData(n, 
+               nameColumnToPlot="value", 
+               mapTitle="Improvements per bank after IMF Hungary policy",
+               mapRegion="Hungary",
+               catMethod="pretty", #quantiles, fixedWidth, pretty, c(0:5)
+               colourPalette=c('black','green'),
+               addLegend=TRUE,
+               borderCol="black",
+               missingCountryCol="grey")
+?mapCountryData
+#Hungary coordinates = 47°29'N	19°05'E
+
+############################
+# Export
+############################
+
+write.table(omneity, file = 'omneity.csv', row.names=TRUE, sep = ",")
+?write.table
+
+####################################################################################
+## DESCRIBING RESULTS: TABLES FOR IMPROVEMENTS
+####################################################################################
+
+############################
+# Tables
+############################
+
+#RDD
+Bank_RDD_Improvements <- aggregate(omneity$RDD_improvement ~ omneity$Trading.Name, FUN = sum)
+
+#CRDIV/CRR
+Bank_CRD_Improvements <- aggregate(omneity$CRD_CRR_improvement ~ omneity$Trading.Name, FUN = sum)
+
+
+############################
+# Ribbon graph / streamgraph
+############################
+library(ggplot2)
+ribbon_graph <- as.data.frame(omneity[c(1:6,17,18,19,20,21,22)], drop=false)
+ribbon_graph$CRD_CRR_deterioration <- ribbon_graph$CRD_CRR_improvement - ribbon_graph$CRD_CRR_success
+ribbon_graph$RDD_deterioration <- ribbon_graph$RDD_improvement - ribbon_graph$RDD_success
+??stream.graph
+?geom_ribbon
