@@ -580,19 +580,51 @@ full_change_points_with_countries <- merge(Index, full_change_points, by="Tradin
 ## Create lag variables for policy implementation
 ############################
 
-#creating lag NOTE: These generates their own variable label which is confusing
-full_change_points <- SpreadDummy(data = full_change_points, 
-                           Var = 'PolicyDates', #name variable
-                           spreadBy = -14, #set delay of policy effect, 1 fortnight
-                           reminder = FALSE)
+#NECESSARY FIRST TO ORDER DATA
+arrange("Trading.Name", "days")
 
-full_change_points <- SpreadDummy(data = full_change_points, 
-                                  Var = 'PolicyDates', #name variable
-                                  spreadBy = 7, #set policy expectation effect, 1 week
-                                  reminder = FALSE)
+#EU CRDIV/CRR lag
+omneity$CRD_CRR_lag <- NULL
+omneity$CRD_CRR_lead <- NULL
+?SpreadDummy
+library(DataCombine)
+omneity <- SpreadDummy(data = omneity, 
+                       Var = 'CRD_CRR', #name of variable
+                       NewVar='CRD_CRR_lag',
+                       spreadBy = -14, #set delay of policy effect, 1 fortnight
+                       reminder = FALSE)
+#EU CRDIV/CRR lead
+omneity <- SpreadDummy(data = omneity, 
+                       Var = 'CRD_CRR', #name of variable
+                       NewVar='CRD_CRR_lead',
+                       spreadBy = 14, #set delay of policy effect, 1 fortnight
+                       reminder = FALSE)
 
-names(full_change_points)[names(full_change_points) == 'PolicyDatesSpread-14'] <- 'PolicyLag'
-names(full_change_points)[names(full_change_points) == 'PolicyDatesSpread-7’] <- 'PolicyExpectation’
+#RDD lag
+omneity <- SpreadDummy(data = omneity, 
+                       Var = 'RDD', #name of variable
+                       NewVar='RDD_lag',
+                       spreadBy = -14, #set delay of policy effect, 1 fortnight
+                       reminder = FALSE)
+#RDD lead
+omneity <- SpreadDummy(data = omneity, 
+                       Var = 'RDD', #name of variable
+                       NewVar='RDD_lead',
+                       spreadBy = 14, #set delay of policy effect, 1 fortnight
+                       reminder = FALSE)
+
+#Hungary lag
+omneity <- SpreadDummy(data = omneity, 
+                       Var = 'Hungary', #name of variable
+                       NewVar='Hungary_lag',
+                       spreadBy = -14, #set delay of policy effect, 1 fortnight
+                       reminder = FALSE)
+#Hungary lead
+omneity <- SpreadDummy(data = omneity, 
+                       Var = 'Hungary', #name of variable
+                       NewVar='Hungary_lead',
+                       spreadBy = 14, #set delay of policy effect, 1 fortnight
+                       reminder = FALSE)
 
 ############################
 ## Create policy success indicator 
