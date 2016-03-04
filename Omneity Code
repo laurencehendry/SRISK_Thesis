@@ -528,40 +528,46 @@ df <- aggregate(full_change_points$est_changes ~ full_change_points$tradingname_
 ## Create dummy for policies from interviews
 ############################
 
-# create a day when the policy occurred
-full_change_points$PolicyDates <- 0
-full_change_points[full_change_points$days == 41463, #policy dates from interviews, SRM EC Proposal
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 41625, #SRM Council agreement
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 41743, #EP adopts SRM
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 41981, #Council reaches agreement on SRM
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 42335, #SRM ratified by the Commission for Greece, EC adopts delegated regulation of EP, SRM fully operational 
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 42142, #Improvement of insolvency proceedings across EU passed in EC
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 42178, #EC insolvency proceedings enter force
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 41145, #OMT announcement in Aug, 2012
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 39734, #Hungary- IMF discussing loan for Hungary
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 39745, #Hungary- Agreement of policy package
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 39755, #Hungary- formal agreement to programme
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 40385, #Announcement of broad agreement to Basel III
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 40431, #Final announcement of Basel III
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 40742, #Original proposal of CRDIV/CRR by EC
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 41449, #Final legislative draft of CRDIV/CRR published
-                   names(full_change_points) == "PolicyDates"] <- 1
-full_change_points[full_change_points$days == 41638, #CRDIV/CRR applied
-                   names(full_change_points) == "PolicyDates"] <- 1
+omneity$PolicyDates <- NULL
+omneity$PolicyLags <- NULL
+omneity$PolicySuccess <- NULL
+
+#EU CRDIV/CRR dates
+omneity$CRD_CRR <- 0
+omneity[omneity$days == 40385, #Announcement of broad agreement Basel III
+        names(omneity) == "CRD_CRR"] <- 0
+omneity[omneity$days == 40431, #Final announcement Basel III
+        names(omneity) == "CRD_CRR"] <- 1
+omneity[omneity$days == 40742, #Original proposal of commission for CRDIV/CRR
+        names(omneity) == "CRD_CRR"] <- 1
+omneity[omneity$days == 41379, #EP adopts legislation for CRDIV/CRR
+        names(omneity) == "CRD_CRR"] <- 0
+omneity[omneity$days == 41449, #CRDIV/CRR applied
+        names(omneity) == "CRD_CRR"] <- 1
+omneity[omneity$days == 41638, #Draghi speech
+        names(omneity) == "CRD_CRR"] <- 0
+
+#EU RRD dates
+omneity$RDD <- 0
+omneity[omneity$days == 40469, #EC publishes plan for crisis management 
+        names(omneity) == "RDD"] <- 1
+omneity[omneity$days == 40547, #EC launches communications phase 
+        names(omneity) == "RDD"] <- 1
+omneity[omneity$days == 41604, #Commission publishes initial proposal of RRD
+        names(omneity) == "RDD"] <- 1
+omneity[omneity$days == 41772, #EP adopts RRD
+        names(omneity) == "RDD"] <- 1
+omneity[omneity$days == 42003, #RRD applied in all member-states
+        names(omneity) == "RDD"] <- 1
+
+#Hungary
+omneity$Hungary <- 0
+omneity[omneity$days == 39734, #RRD applied in all member-states
+        names(omneity) == "Hungary"] <- 1
+omneity[omneity$days == 39745, #RRD applied in all member-states
+        names(omneity) == "Hungary"] <- 1
+omneity[omneity$days == 39755, #RRD applied in all member-states
+        names(omneity) == "Hungary"] <- 1
 
 ############################
 ## Merge the countries for banks
