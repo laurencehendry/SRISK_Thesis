@@ -923,7 +923,6 @@ Bank_RDD_Improvements <- aggregate(omneity$RDD_improvement ~ omneity$Trading.Nam
 #CRDIV/CRR
 Bank_CRD_Improvements <- aggregate(omneity$CRD_CRR_improvement ~ omneity$Trading.Name, FUN = sum)
 
-
 ############################
 # Ribbon graph / streamgraph
 ############################
@@ -933,3 +932,140 @@ ribbon_graph$CRD_CRR_deterioration <- ribbon_graph$CRD_CRR_improvement - ribbon_
 ribbon_graph$RDD_deterioration <- ribbon_graph$RDD_improvement - ribbon_graph$RDD_success
 ??stream.graph
 ?geom_ribbon
+
+############################
+# sundial names of banks 
+############################
+
+install.packages("circlize")
+library(circlize)
+install.packages("plotrix")
+library(plotrix)
+
+Bank_CRD_Improvements[1] = NULL
+names(combined)[1] <- 'Code'
+Bank_CRD_Improvements$CRD_CRR.omneity$CRD_CRR_improvement
+
+?radial.plot()
+#CRD
+par(cex.axis=0.55)
+plotrix::radial.plot(Bank_CRD_Performance$Improvements,
+                     polar.pos=NULL,
+                     labels=Bank_CRD_Performance$Trading.Names,
+                     clockwise=TRUE,
+                     radlab=TRUE,
+                     #rp.type="r", #r,p,s
+                     label.prop=1.2,
+                     #main="Bank CRD Improvements",
+                     line.col="red",
+                     mar=c(7,6,6,3),
+                     lwd=3,
+                     show.grid=TRUE,
+                     show.radial.grid=TRUE,
+                     show.centroid=FALSE,
+                     radial.lim=c(0,1,2,3),
+                     boxed.radial=FALSE,
+                     poly.col="red",
+                     add=FALSE)
+par(cex.axis=0.55)
+plotrix::radial.plot(Bank_CRD_Performance$Fails,
+                     polar.pos=NULL,
+                     labels=Bank_CRD_Performance$Trading.Names,
+                     clockwise=TRUE,
+                     radlab=TRUE,
+                     #rp.type="r", #r,p,s
+                     label.prop=1.2,
+                     #main="Bank CRD Fails",
+                     line.col="blue",
+                     mar=c(7,6,6,3),
+                     lwd=3,
+                     show.grid=TRUE,
+                     show.radial.grid=TRUE,
+                     show.centroid=FALSE,
+                     radial.lim=c(0,1,2,3),
+                     boxed.radial=FALSE,
+                     poly.col="red",
+                     add=FALSE)
+
+#RDD
+par(cex.axis=0.55)
+plotrix::radial.plot(Bank_RDD_Performance$Improvements,
+                     polar.pos=NULL,
+                     labels=Bank_RDD_Performance$Trading.Names,
+                     clockwise=TRUE,
+                     radlab=TRUE,
+                     #rp.type="r", #r,p,s
+                     label.prop=1.2,
+                     #main="Bank RDD Improvements",
+                     line.col="red",
+                     mar=c(7,6,6,3),
+                     lwd=3,
+                     show.grid=TRUE,
+                     show.radial.grid=TRUE,
+                     show.centroid=FALSE,
+                     radial.lim=c(0,1,2,3),
+                     boxed.radial=FALSE,
+                     poly.col="red",
+                     add=FALSE)
+par(cex.axis=0.55)
+plotrix::radial.plot(Bank_RDD_Performance$Fails,
+                     polar.pos=NULL,
+                     labels=Bank_CRD_Performance$Trading.Names,
+                     clockwise=TRUE,
+                     radlab=TRUE,
+                     #rp.type="r", #r,p,s
+                     label.prop=1.2,
+                     #main="Bank RDD Fails",
+                     line.col="blue",
+                     mar=c(7,6,6,3),
+                     lwd=3,
+                     show.grid=TRUE,
+                     show.radial.grid=TRUE,
+                     show.centroid=FALSE,
+                     radial.lim=c(0,1,2,3),
+                     boxed.radial=FALSE,
+                     poly.col="red",
+                     add=FALSE)
+    
+?polar.plot()
+polar.plot(Bank_CRD_Performance$Improvements,
+           labels=Bank_CRD_Performance$Trading.Names,
+           label.pos=1.4937,
+           start=0,
+           rp.type="radial lines",
+           lwd=3,
+           rad.col="lightblue")
+
+############################
+# tell a story srisk graph for deutsche bank, with date change points
+############################
+#EU CRDIV/CRR dates
+40431, #Final announcement Basel III
+40742, #Original proposal of commission for CRDIV/CRR
+41449, #CRDIV/CRR applied
+#EU RRD dates
+41604, #Commission publishes initial proposal of RRD
+42003, #RRD applied in all member-states
+
+# Generate subset
+Bankx <- subset(omneity, Code=="SDA1V_FH") 
+Bankx <- subset(Bankx, days>=40000) #2009-07-08
+Bankx <- subset(Bankx, days<=43000) 
+
+?as.Date
+# BDB said that change point probably occured here (enforcemeent of new insolvency proceedings)
+# 'Deutsche bank change point example with BDB suggested 25-06-2015'
+ggplot(Bankx, aes(days, srisk)) +
+  geom_line() +
+  geom_vline(xintercept = 40431, colour = 'red') + 
+  geom_vline(xintercept = 40445, linetype = 'dashed', colour = 'red') + 
+  geom_vline(xintercept = 40417, linetype = 'dashed', colour = 'red') + 
+  geom_vline(xintercept = 40742, colour = 'red') +
+  geom_vline(xintercept = 40756, linetype = 'dashed', colour = 'red') + 
+  geom_vline(xintercept = 40728, linetype = 'dashed', colour = 'red') + 
+  geom_vline(xintercept = 41449, colour = 'red') +
+  geom_vline(xintercept = 41463, linetype = 'dashed', colour = 'red') + 
+  geom_vline(xintercept = 41435, linetype = 'dashed', colour = 'red') +
+  xlab('Time') + 
+  ylab('Systemic Risk') +
+  ggtitle('Deutsche Bank SRISK with EU CRDIV/CRR dates')
