@@ -1,4 +1,4 @@
-![alt text](https://mystudies.hertie-school.org/img/1hsog_header_gr_newlogo.jpg "Hertie Logo")
+![alt text](https://raw.githubusercontent.com/laurencehendry/SRISK_Thesis/master/Working/mystudies_header_hertieschool_newlogo_update.gif "Hertie Logo")
 
 # SRISK_Thesis
 R Scripts for the Hertie School of Governance Masters Thesis 
